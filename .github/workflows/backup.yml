@@ -16,12 +16,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Install the latest Postgres client
+      # pg_dump refuses to dump a server newer than itself, so install the server's major version.
+      - name: Install a Postgres client that matches the server
+        env:
+          DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq postgresql-common
           sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
-          sudo apt-get install -y -qq postgresql-client
+          major=$(psql "$DATABASE_URL" -tAc "show server_version_num" | cut -c1-2)
+          sudo apt-get install -y -qq "postgresql-client-$major"
+          echo "/usr/lib/postgresql/$major/bin" >> "$GITHUB_PATH"
 
       - name: Dump and encrypt
         env:
@@ -29,6 +34,7 @@ jobs:
           BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
         run: |
           set -euo pipefail
+          pg_dump --version
           pg_dump "$DATABASE_URL" --no-owner --no-privileges --format=custom --file=brain.dump
           gpg --batch --yes --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" \
             --symmetric --cipher-algo AES256 --output "brain-$(date -u +%F).dump.gpg" brain.dump
