@@ -1,0 +1,1 @@
+ALTER TABLE "notes" ADD COLUMN "pattern_titles" jsonb DEFAULT '[]'::jsonb NOT NULL;

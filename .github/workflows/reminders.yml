@@ -1,0 +1,19 @@
+# Vercel's free plan runs cron jobs only once a day, but reminders go out at each
+# person's chosen time. So GitHub calls the secured reminders endpoint every 15 minutes.
+name: Review reminders
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Send due reminders
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ vars.APP_URL || 'https://secondbrain.abulhassan.dev' }}
+        run: curl -fsS --max-time 90 -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/reminders"
