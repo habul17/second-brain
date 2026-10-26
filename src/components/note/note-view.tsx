@@ -157,8 +157,8 @@ export function NoteView({ full, nextReview }: Props) {
         </AnimatePresence>
       </div>
 
-      {/* Footer nav */}
-      <div className="flex items-center justify-between gap-3 border-t pt-8">
+      {/* Footer nav: sticks to the bottom so Next is always in reach on long notes. */}
+      <div className="sticky bottom-0 z-10 -mx-4 flex items-center justify-between gap-3 border-t bg-background/90 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:-mx-6 sm:px-6">
         <Button variant="ghost" size="lg" onClick={() => goTo(step - 1)} disabled={step === 0}>
           <ArrowLeft /> Back
         </Button>

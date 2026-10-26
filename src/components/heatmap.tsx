@@ -17,17 +17,36 @@ function label(day: string, n: number) {
   return `${date}: ${n === 0 ? "no reviews" : n === 1 ? "1 review" : `${n} reviews`}`
 }
 
+function monthName(day: string) {
+  return new Date(`${day}T12:00:00Z`).toLocaleDateString("en", { month: "short", timeZone: "UTC" })
+}
+
 /** One square per day, a column per week (Sunday on top), darker = more reviews. */
 export function Heatmap({ cells }: Props) {
   const offset = cells.length ? new Date(`${cells[0].day}T12:00:00Z`).getUTCDay() : 0
   const weeks = Math.ceil((offset + cells.length) / 7)
   const total = cells.reduce((sum, c) => sum + c.n, 0)
+  const columns = `repeat(${weeks}, minmax(0, 14px))`
+
+  // Month names above the week where each month starts; the first, partial month too if there's room.
+  const months = new Map<number, string>()
+  cells.forEach((c, i) => {
+    if (c.day.endsWith("-01")) months.set(Math.floor((offset + i) / 7), monthName(c.day))
+  })
+  if (cells.length && !months.has(0) && Math.min(...months.keys()) >= 3) months.set(0, monthName(cells[0].day))
 
   return (
     <div className="grid w-full max-w-fit gap-3">
+      <div className="-mb-1.5 grid gap-[3px] text-[10px] leading-none text-muted-foreground" style={{ gridTemplateColumns: columns }} aria-hidden>
+        {Array.from({ length: weeks }, (_, w) => (
+          <span key={w} className="whitespace-nowrap">
+            {months.get(w)}
+          </span>
+        ))}
+      </div>
       <div
         className="grid gap-[3px]"
-        style={{ gridTemplateColumns: `repeat(${weeks}, minmax(0, 14px))`, gridTemplateRows: "repeat(7, auto)", gridAutoFlow: "column" }}
+        style={{ gridTemplateColumns: columns, gridTemplateRows: "repeat(7, auto)", gridAutoFlow: "column" }}
         role="img"
         aria-label={`${total} reviews in the last ${Math.round(cells.length / 30)} months`}
       >

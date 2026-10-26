@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Brain, FileText, Flame, Home, Layers, Settings, Sparkles, Swords } from "lucide-react"
+import { Brain, FileText, Flame, Home, Layers, Plus, Settings, Sparkles, Swords } from "lucide-react"
 import { searchAction } from "@/actions/search"
 import { embedQuery, onEmbedderStatus, warmUp, type EmbedderStatus } from "@/lib/embedder"
 import { KIND_ICON } from "@/lib/icons"
@@ -19,6 +19,7 @@ export function openSearch() {
 const SHORTCUTS = [
   { label: "Home", href: "/", icon: Home },
   { label: "Start today's review", href: "/review", icon: Layers },
+  { label: "New note", href: "/new", icon: Plus },
   { label: "Mock interview", href: "/mock", icon: Swords },
   { label: "Weak spots", href: "/weak", icon: Flame },
   { label: "Settings", href: "/settings", icon: Settings },
@@ -77,6 +78,10 @@ export function SearchPalette() {
     return () => clearTimeout(timer)
   }, [query, model])
 
+  // While typing, shortcuts whose name matches stay one Enter away ("mock", "new", "settings").
+  const q = query.trim().toLowerCase()
+  const actions = q ? SHORTCUTS.filter((s) => s.label.toLowerCase().split(/\s+/).some((w) => w.startsWith(q))) : SHORTCUTS
+
   function go(href: string) {
     setOpen(false)
     setQuery("")
@@ -91,7 +96,16 @@ export function SearchPalette() {
             setSearching(true)
           }} />
         <CommandList className="max-h-[min(60svh,26rem)]">
-          {query.trim() ? (
+          {actions.length > 0 && (
+            <CommandGroup heading="Go to">
+              {actions.map((s) => (
+                <CommandItem key={s.href} value={s.href} onSelect={() => go(s.href)}>
+                  <s.icon /> {s.label}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
+          {q && (
             <>
               {!searching && <CommandEmpty>Nothing found. Try other words, or describe the idea.</CommandEmpty>}
               {hits.length > 0 && (
@@ -119,14 +133,6 @@ export function SearchPalette() {
                 </CommandGroup>
               )}
             </>
-          ) : (
-            <CommandGroup heading="Go to">
-              {SHORTCUTS.map((s) => (
-                <CommandItem key={s.href} value={s.href} onSelect={() => go(s.href)}>
-                  <s.icon /> {s.label}
-                </CommandItem>
-              ))}
-            </CommandGroup>
           )}
         </CommandList>
         <div className="flex items-center gap-2 border-t px-3 py-2 text-[0.7rem] text-muted-foreground">

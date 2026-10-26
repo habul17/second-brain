@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ChevronLeft, FolderOpen } from "lucide-react"
+import { ChevronLeft, Flame, FolderOpen } from "lucide-react"
 import { z } from "zod"
 import { NewTopicButton, SectionMenu, TopicMenu } from "@/components/section-actions"
 import { KIND_ICON, SectionIcon } from "@/lib/icons"
@@ -27,9 +27,10 @@ export default async function SectionPage({ params }: PageProps<"/s/[sectionId]"
   const { user, section } = await load((await params).sectionId)
   const [topics, all] = await Promise.all([listTopicsWithNotes(user.id, section.id), listSections(user.id)])
   const noteCount = topics.reduce((sum, t) => sum + t.notes.length, 0)
+  const now = new Date()
 
   return (
-    <div className="grid gap-10">
+    <div className="grid grid-cols-1 gap-10">
       <div className="grid gap-6">
         <Link href="/" className="flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ChevronLeft className="size-4" /> Home
@@ -72,7 +73,7 @@ export default async function SectionPage({ params }: PageProps<"/s/[sectionId]"
           <NewTopicButton sectionId={section.id} size="lg" />
         </div>
       ) : (
-        <div className="grid gap-6">
+        <div className="grid grid-cols-1 gap-6">
           {topics.map((topic) => (
             <section key={topic.id} id={`t-${topic.id}`} className="scroll-mt-24 overflow-hidden rounded-3xl border bg-card">
               <header className="flex items-center justify-between gap-3 border-b py-3 pr-3 pl-5 sm:pl-6">
@@ -91,7 +92,7 @@ export default async function SectionPage({ params }: PageProps<"/s/[sectionId]"
                   .
                 </p>
               ) : (
-                <ul className="grid divide-y">
+                <ul className="grid grid-cols-1 divide-y">
                   {topic.notes.map((note) => {
                     const KindIcon = KIND_ICON[note.kind]
                     return (
@@ -102,6 +103,14 @@ export default async function SectionPage({ params }: PageProps<"/s/[sectionId]"
                         >
                           <KindIcon className="size-4 shrink-0 text-muted-foreground" />
                           <span className="min-w-0 flex-1 truncate">{note.title}</span>
+                          {note.weak && (
+                            <span className="flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 font-mono text-[0.7rem] text-muted-foreground">
+                              <Flame className="size-3" /> weak
+                            </span>
+                          )}
+                          {note.due && note.due <= now && (
+                            <span className="shrink-0 rounded-md bg-foreground px-1.5 py-0.5 font-mono text-[0.7rem] text-background">due</span>
+                          )}
                           {note.difficulty && (
                             <span className="shrink-0 rounded-md border px-1.5 py-0.5 font-mono text-[0.7rem] text-muted-foreground capitalize">
                               {note.difficulty}

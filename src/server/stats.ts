@@ -3,6 +3,9 @@ import { and, count, desc, eq, gt, lte, sql } from "drizzle-orm"
 import { db } from "@/db"
 import { cards, notes, reviews, sections, topics } from "@/db/schema"
 
+/** A weak spot: reviewed, and forgotten more than once or FSRS rates it hard to remember. */
+export const isWeak = sql<boolean>`(${cards.reps} > 0 and (${cards.lapses} >= 2 or ${cards.difficulty} >= 7))`
+
 /** YYYY-MM-DD for a moment, in the user's time zone. */
 export function localDate(date: Date, timeZone: string) {
   return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(date)
@@ -78,7 +81,7 @@ export async function weakSpots(userId: string, limit = 20) {
     .innerJoin(notes, eq(notes.id, cards.noteId))
     .innerJoin(topics, eq(topics.id, notes.topicId))
     .innerJoin(sections, eq(sections.id, topics.sectionId))
-    .where(and(eq(cards.userId, userId), gt(cards.reps, 0), sql`(${cards.lapses} >= 2 or ${cards.difficulty} >= 7)`))
+    .where(and(eq(cards.userId, userId), isWeak))
     .orderBy(desc(cards.lapses), desc(cards.difficulty))
     .limit(limit)
   return rows.map((r) => ({

@@ -1,9 +1,10 @@
 import "server-only"
 import { and, asc, eq, max, sql } from "drizzle-orm"
 import { db } from "@/db"
-import { notes, sections, topics } from "@/db/schema"
+import { cards, notes, sections, topics } from "@/db/schema"
+import { isWeak } from "@/server/stats"
 
-/** Topics of a section, each with its notes (title + kind only). */
+/** Topics of a section, each with its notes (title, kind, and whether it is due or weak). */
 export async function listTopicsWithNotes(userId: string, sectionId: string) {
   const topicRows = await db
     .select()
@@ -11,9 +12,18 @@ export async function listTopicsWithNotes(userId: string, sectionId: string) {
     .where(and(eq(topics.userId, userId), eq(topics.sectionId, sectionId)))
     .orderBy(asc(topics.position), asc(topics.createdAt))
   const noteRows = await db
-    .select({ id: notes.id, title: notes.title, kind: notes.kind, topicId: notes.topicId, difficulty: notes.difficulty })
+    .select({
+      id: notes.id,
+      title: notes.title,
+      kind: notes.kind,
+      topicId: notes.topicId,
+      difficulty: notes.difficulty,
+      due: cards.due,
+      weak: isWeak,
+    })
     .from(notes)
     .innerJoin(topics, eq(topics.id, notes.topicId))
+    .leftJoin(cards, eq(cards.noteId, notes.id))
     .where(and(eq(notes.userId, userId), eq(topics.sectionId, sectionId)))
     .orderBy(asc(notes.createdAt))
   return topicRows.map((t) => ({ ...t, notes: noteRows.filter((n) => n.topicId === t.id) }))
