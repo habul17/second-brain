@@ -122,7 +122,7 @@ Two kinds, linked together (a problem says which pattern(s) it uses; a pattern l
 
 ## Build order
 
-Steps 1 to 5 are built and tested locally. Step 6 is next.
+All 6 steps are done. Live at https://secondbrain.abulhassan.dev (Vercel, Singapore; Neon, Singapore), tested on laptop and phone.
 
 1. Skeleton: auth, sections → topics → notes, 4-step note page, editor.
 2. MCP server + API keys (Claude can save notes).
