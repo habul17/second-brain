@@ -41,7 +41,8 @@ export function TopBar({ user, due }: Props) {
   }
 
   return (
-    <header className="sticky top-0 z-30 border-b bg-background/85 backdrop-blur-md">
+    // Focus mode: hidden while a review runs (the session is marked data-focus). Its X still leads home.
+    <header className="sticky top-0 z-30 border-b bg-background/85 backdrop-blur-md [body:has([data-focus])_&]:hidden">
       <div className="mx-auto flex h-16 max-w-5xl items-center gap-2 px-4 sm:px-6">
         <Link href="/" aria-label="Home" className="mr-auto min-w-0">
           <Logo />

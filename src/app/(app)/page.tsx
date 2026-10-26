@@ -5,6 +5,7 @@ import { NewSectionCard } from "@/components/home/new-section-card"
 import { Button } from "@/components/ui/button"
 import { KIND_ICON, SectionIcon } from "@/lib/icons"
 import { recentNotes } from "@/server/notes"
+import { todayPlan } from "@/server/review"
 import { listSectionsWithCounts } from "@/server/sections"
 import { requireUser } from "@/server/session"
 import { getSettings } from "@/server/settings"
@@ -25,8 +26,9 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`
 export default async function HomePage() {
   const user = await requireUser()
   const settings = await getSettings(user.id)
-  const [sections, due, stats, recent, weak] = await Promise.all([
+  const [sections, plan, due, stats, recent, weak] = await Promise.all([
     listSectionsWithCounts(user.id),
+    todayPlan(user.id, settings.dailyMinutes),
     dueSummary(user.id),
     activity(user.id, settings.timezone),
     recentNotes(user.id),
@@ -53,11 +55,12 @@ export default async function HomePage() {
             <h2 id="today" className="font-mono text-xs font-semibold tracking-wider text-muted-foreground uppercase">
               Today&apos;s review
             </h2>
-            {due.due > 0 ? (
+            {plan.count > 0 ? (
               <>
-                <p className="text-2xl font-semibold tabular-nums">{plural(due.due, "note")} to review</p>
-                <p className="text-sm text-muted-foreground">
-                  About {Math.min(settings.dailyMinutes, Math.max(2, Math.ceil(due.due * 1.5)))} minutes. Say each answer out loud.
+                <p className="text-2xl font-semibold tabular-nums">{plural(plan.count, "note")} to review</p>
+                <p className="text-sm text-muted-foreground tabular-nums">
+                  About {plan.minutes} minutes. Say each answer out loud.
+                  {plan.later > 0 && ` ${plan.later} more after that if you want.`}
                 </p>
               </>
             ) : totalNotes === 0 ? (
@@ -78,7 +81,7 @@ export default async function HomePage() {
               </>
             )}
           </div>
-          {due.due > 0 ? (
+          {plan.count > 0 ? (
             <Button asChild size="lg" className="h-12 px-6 text-base">
               <Link href="/review">
                 <Layers /> Start review <ArrowRight />

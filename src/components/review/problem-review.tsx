@@ -169,7 +169,7 @@ export function ProblemReview({ item, allPatterns, onDone }: { item: ReviewItem;
         {step !== "followup" && (
           <details
             open={step === "pattern" || step === "approach" || (step === "code" && laptop)}
-            className={cn("group rounded-3xl border bg-card", split && "lg:sticky lg:top-20 lg:max-h-[calc(100svh-6rem)] lg:overflow-y-auto")}
+            className={cn("group rounded-3xl border bg-card", split && "lg:sticky lg:top-6 lg:max-h-[calc(100svh-3rem)] lg:overflow-y-auto")}
           >
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-6 py-4 sm:px-8">
               <span className="font-mono text-xs font-semibold tracking-wider text-muted-foreground uppercase">Problem</span>

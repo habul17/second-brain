@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm"
 import webpush from "web-push"
 import { db } from "@/db"
 import { pushSubscriptions, settings } from "@/db/schema"
-import { countDue } from "@/server/sections"
+import { todayPlan } from "@/server/review"
 import { localDate } from "@/server/stats"
 
 let configured = false
@@ -68,12 +68,11 @@ export async function sendDueReminders(now = new Date()) {
     const today = localDate(now, s.timezone)
     if (s.lastRemindedOn === today || localTime(now, s.timezone) < s.reminderTime) continue
     await db.update(settings).set({ lastRemindedOn: today }).where(eq(settings.userId, s.userId))
-    const due = await countDue(s.userId)
-    if (due === 0) continue
-    const minutes = Math.min(s.dailyMinutes, Math.max(2, Math.ceil(due * 1.5)))
+    const plan = await todayPlan(s.userId, s.dailyMinutes)
+    if (plan.count === 0) continue
     reminded += await sendToUser(s.userId, {
-      title: `${due} note${due === 1 ? "" : "s"} to review`,
-      body: `About ${minutes} minutes. Keep your streak going.`,
+      title: `${plan.count} note${plan.count === 1 ? "" : "s"} to review`,
+      body: `About ${plan.minutes} minutes. Keep your streak going.`,
       url: "/review",
     })
   }

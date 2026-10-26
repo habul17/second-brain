@@ -10,6 +10,39 @@ function minutesFor(kind: string, timeLimitMin: number | null) {
   return kind === "problem" ? Math.min(timeLimitMin ?? 20, 30) + 3 : 1.5
 }
 
+/** Takes items in order while they fit the budget (always at least one). Returns them and the minutes they need. */
+function fitBudget<T>(items: T[], budget: number, cost: (item: T) => number) {
+  const picked: T[] = []
+  let minutes = 0
+  for (const item of items) {
+    const c = cost(item)
+    if (picked.length === 0 || minutes + c <= budget) {
+      picked.push(item)
+      minutes += c
+    }
+  }
+  return { picked, minutes }
+}
+
+/** Due notes, oldest first. Same order everywhere so the plan and the session pick the same notes. */
+const dueOrder = [asc(cards.due), asc(cards.noteId)]
+
+/**
+ * What today's review will hold: the top bar, home card and reminders show this,
+ * so their count matches the session. `later` is due but over the daily budget.
+ */
+export async function todayPlan(userId: string, dailyMinutes: number) {
+  const rows = await db
+    .select({ kind: notes.kind, timeLimitMin: notes.timeLimitMin })
+    .from(cards)
+    .innerJoin(notes, eq(notes.id, cards.noteId))
+    .where(and(eq(cards.userId, userId), lte(cards.due, new Date())))
+    .orderBy(...dueOrder)
+    .limit(200)
+  const { picked, minutes } = fitBudget(rows, dailyMinutes, (r) => minutesFor(r.kind, r.timeLimitMin))
+  return { count: picked.length, minutes: Math.ceil(minutes), later: rows.length - picked.length }
+}
+
 /** Round-robin across sections, so one subject never fills a whole session. */
 function interleave<T extends { sectionId: string }>(items: T[]) {
   const bySection = new Map<string, T[]>()
@@ -34,19 +67,10 @@ export async function buildSession(userId: string, { noteIds }: { noteIds?: stri
     .innerJoin(topics, eq(topics.id, notes.topicId))
     .innerJoin(sections, eq(sections.id, topics.sectionId))
     .where(and(eq(cards.userId, userId), noteIds ? inArray(cards.noteId, noteIds) : lte(cards.due, now)))
-    .orderBy(asc(cards.due))
+    .orderBy(...dueOrder)
     .limit(200)
 
-  let budget = settings.dailyMinutes
-  const picked: typeof rows = []
-  for (const row of rows) {
-    const cost = minutesFor(row.note.kind, row.note.timeLimitMin)
-    // Always take at least one, then only what still fits.
-    if (noteIds || picked.length === 0 || cost <= budget) {
-      picked.push(row)
-      budget -= cost
-    }
-  }
+  const picked = noteIds ? rows : fitBudget(rows, settings.dailyMinutes, (r) => minutesFor(r.note.kind, r.note.timeLimitMin)).picked
   const ordered = noteIds ? noteIds.flatMap((id) => picked.filter((r) => r.note.id === id)) : interleave(picked)
 
   // Patterns for the "which pattern is it?" step of DSA problems.

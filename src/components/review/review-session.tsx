@@ -122,9 +122,9 @@ export function ReviewSession({
   }
 
   return (
-    // Problems go wide on laptop: problem on the left, your work on the right.
-    <div className={cn("mx-auto grid w-full max-w-2xl gap-8", item.kind === "problem" && "lg:max-w-none")}>
-      <div className="grid gap-3">
+    // data-focus hides the top bar (globals.css). Problems go wide on laptop: problem on the left, your work on the right.
+    <div data-focus className={cn("mx-auto grid w-full max-w-2xl grid-cols-1 gap-8", item.kind === "problem" && "lg:max-w-none")}>
+      <div className="grid grid-cols-1 gap-3">
         <div className="flex items-center justify-between gap-3">
           <span className="min-w-0 truncate text-sm text-muted-foreground">
             {title} · {item.kind === "problem" ? item.sectionName : `${item.sectionName} › ${item.topicName}`}
