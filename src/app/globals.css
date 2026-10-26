@@ -29,6 +29,9 @@
   --color-foreground: var(--foreground);
   --color-background: var(--background);
   --color-highlight: var(--highlight);
+  --color-good: var(--good);
+  --color-okay: var(--okay);
+  --color-bad: var(--bad);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -37,7 +40,10 @@
   --radius-3xl: calc(var(--radius) * 2.2);
 }
 
-/* Palette: black and white only. Greys do the layering; the grey marker is the only "highlight". */
+/*
+ * Palette: black and white. Greys do the layering; the grey marker is the only "highlight".
+ * Three signal colours, used only for results: good (Nailed it, test passed), okay (Shaky), bad (Forgot, failed, delete).
+ */
 :root {
   --background: oklch(0.985 0 0);
   --foreground: oklch(0.16 0 0);
@@ -53,12 +59,15 @@
   --muted-foreground: oklch(0.47 0 0);
   --accent: oklch(0.94 0 0);
   --accent-foreground: oklch(0.16 0 0);
-  --destructive: oklch(0.16 0 0);
+  --destructive: var(--bad);
   --border: oklch(0.89 0 0);
   --input: oklch(0.88 0 0);
   --ring: oklch(0.35 0 0);
   --radius: 0.75rem;
   --highlight: oklch(0.85 0 0);
+  --good: oklch(0.56 0.14 152);
+  --okay: oklch(0.72 0.15 68);
+  --bad: oklch(0.58 0.2 27);
 }
 
 .dark {
@@ -76,11 +85,14 @@
   --muted-foreground: oklch(0.68 0 0);
   --accent: oklch(0.25 0 0);
   --accent-foreground: oklch(0.95 0 0);
-  --destructive: oklch(0.95 0 0);
+  --destructive: var(--bad);
   --border: oklch(1 0 0 / 13%);
   --input: oklch(1 0 0 / 16%);
   --ring: oklch(0.75 0 0);
   --highlight: oklch(1 0 0 / 24%);
+  --good: oklch(0.74 0.15 152);
+  --okay: oklch(0.8 0.14 75);
+  --bad: oklch(0.7 0.18 25);
 }
 
 @layer base {

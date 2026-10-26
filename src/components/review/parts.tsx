@@ -16,6 +16,13 @@ export const RATINGS = [
   { value: 3, label: "Nailed it", hint: "Could say it in an interview" },
 ] as const
 
+/** Each rating's signal colour: a dot always, a tinted fill when it's the suggested one. */
+const TONE = {
+  1: { dot: "bg-bad", on: "border-bad bg-bad/10 ring-1 ring-bad" },
+  2: { dot: "bg-okay", on: "border-okay bg-okay/15 ring-1 ring-okay" },
+  3: { dot: "bg-good", on: "border-good bg-good/10 ring-1 ring-good" },
+} as const
+
 function days(n: number) {
   return n <= 1 ? "tomorrow" : n < 30 ? `in ${n} days` : `in ${Math.round(n / 30)} mo`
 }
@@ -46,7 +53,7 @@ export function RatingButtons({
   return (
     <div className="grid gap-3">
       <div className="text-sm font-medium text-muted-foreground">
-        How did it go?{suggested && " Suggested: the dark one. Change it if it's wrong."}
+        How did it go?{suggested && " Suggested: the outlined one. Change it if it's wrong."}
       </div>
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
         {RATINGS.map((r) => {
@@ -59,14 +66,15 @@ export function RatingButtons({
               onClick={() => onRate(r.value)}
               className={cn(
                 "grid gap-1 rounded-2xl border px-2 py-3.5 text-center transition-colors disabled:opacity-50 sm:px-4 sm:py-4",
-                on ? "border-foreground bg-foreground text-background" : "bg-card hover:border-foreground/50",
+                on ? TONE[r.value].on : "bg-card hover:border-foreground/50",
               )}
             >
               <span className="flex items-center justify-center gap-2 text-sm font-semibold sm:text-base">
+                <span className={cn("size-2 shrink-0 rounded-full", TONE[r.value].dot)} />
                 {r.label}
-                <Kbd className={cn("hidden sm:inline-flex", on && "bg-background/20 text-background")}>{r.value}</Kbd>
+                <Kbd className="hidden sm:inline-flex">{r.value}</Kbd>
               </span>
-              <span className={cn("text-xs", on ? "text-background/70" : "text-muted-foreground")}>{days(preview[r.value])}</span>
+              <span className="text-xs text-muted-foreground">{days(preview[r.value])}</span>
             </button>
           )
         })}

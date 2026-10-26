@@ -90,8 +90,8 @@ Two kinds, linked together (a problem says which pattern(s) it uses; a pattern l
 
 ## Look and feel
 
-- Same as `100xDevs/Advance/notes-app`: **black and white only**, **JetBrains Mono** everywhere, light/dark switch.
-- Colors maybe later, on request — easy to revert if I don't like them.
+- Same as `100xDevs/Advance/notes-app`: **black and white**, **JetBrains Mono**, light/dark switch.
+- Three signal colours only for results: green (Nailed it, test passed), amber (Shaky), red (Forgot, failed, delete). One commit, easy to revert.
 
 ## Tech choices (all $0)
 

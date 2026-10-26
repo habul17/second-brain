@@ -164,14 +164,21 @@ export function Flashcards({ cards, linkMap, onFinish, finished }: Props) {
         </motion.div>
       </AnimatePresence>
 
-      <motion.div className="grid grid-cols-2 gap-4" animate={{ opacity: flipped ? 1 : 0.35 }} transition={{ duration: 0.2 }}>
-        <Button variant="outline" size="lg" className="h-12 text-base" disabled={!flipped} onClick={() => answer(false)}>
-          <RotateCcw /> Not yet <Kbd className="ml-1 hidden sm:inline-flex">1</Kbd>
+      {/* One step at a time: flip first, then say how it went. */}
+      {flipped ? (
+        <div className="grid grid-cols-2 gap-4">
+          <Button variant="outline" size="lg" className="h-12 border-bad/60 text-base hover:bg-bad/10" onClick={() => answer(false)}>
+            <RotateCcw className="text-bad" /> Not yet <Kbd className="ml-1 hidden sm:inline-flex">1</Kbd>
+          </Button>
+          <Button variant="outline" size="lg" className="h-12 border-good/60 text-base hover:bg-good/10" onClick={() => answer(true)}>
+            <Check className="text-good" /> Knew it <Kbd className="ml-1 hidden sm:inline-flex">2</Kbd>
+          </Button>
+        </div>
+      ) : (
+        <Button size="lg" className="h-12 text-base" onClick={() => setFlipped(true)}>
+          Show answer <Kbd className="ml-1 hidden bg-background/20 text-background sm:inline-flex">Space</Kbd>
         </Button>
-        <Button size="lg" className="h-12 text-base" disabled={!flipped} onClick={() => answer(true)}>
-          <Check /> Knew it <Kbd className="ml-1 hidden bg-background/20 text-background sm:inline-flex">2</Kbd>
-        </Button>
-      </motion.div>
+      )}
     </div>
   )
 }

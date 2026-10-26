@@ -197,11 +197,11 @@ export function ProblemReview({ item, allPatterns, onDone }: { item: ReviewItem;
                     className={cn(
                       "flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors",
                       picked === null && "hover:border-foreground/50",
-                      picked !== null && isRight && "border-foreground bg-foreground text-background",
-                      chosen && !isRight && "border-dashed line-through",
+                      picked !== null && isRight && "border-good bg-good/10 ring-1 ring-good",
+                      chosen && !isRight && "border-bad bg-bad/10 line-through",
                     )}
                   >
-                    {picked !== null && isRight ? <Check className="size-4" /> : chosen ? <X className="size-4" /> : o === "Not sure" ? <CircleHelp className="size-4" /> : null}
+                    {picked !== null && isRight ? <Check className="size-4 text-good" /> : chosen ? <X className="size-4 text-bad" /> : o === "Not sure" ? <CircleHelp className="size-4" /> : null}
                     {o}
                   </button>
                 )
@@ -237,7 +237,7 @@ export function ProblemReview({ item, allPatterns, onDone }: { item: ReviewItem;
           <div className="grid gap-4">
             <div className="flex items-center justify-between gap-3">
               <div className="font-medium">Write it in C++</div>
-              <span className={cn("flex items-center gap-1.5 rounded-lg border px-2.5 py-1 font-mono text-sm tabular-nums", timer.over && "border-foreground bg-foreground text-background")}>
+              <span className={cn("flex items-center gap-1.5 rounded-lg border px-2.5 py-1 font-mono text-sm tabular-nums", timer.over && "border-bad bg-bad/10 text-bad")}>
                 <Timer className="size-4" /> {timer.text}
               </span>
             </div>
@@ -315,8 +315,8 @@ export function ProblemReview({ item, allPatterns, onDone }: { item: ReviewItem;
 function TestResults({ run }: { run: RunResult }) {
   if (run.compileError) {
     return (
-      <div className="grid gap-2 rounded-2xl border-2 border-foreground p-4">
-        <span className="text-sm font-semibold">Didn&apos;t compile</span>
+      <div className="grid gap-2 rounded-2xl border-2 border-bad p-4">
+        <span className="text-sm font-semibold text-bad">Didn&apos;t compile</span>
         <pre className="max-h-60 overflow-auto font-mono text-xs whitespace-pre-wrap">{run.compileError}</pre>
       </div>
     )
@@ -324,9 +324,9 @@ function TestResults({ run }: { run: RunResult }) {
   return (
     <ul className="grid gap-2">
       {run.results.map((r, i) => (
-        <li key={i} className={cn("grid gap-2 rounded-xl border p-3 font-mono text-xs", !r.passed && "border-foreground")}>
+        <li key={i} className={cn("grid gap-2 rounded-xl border p-3 font-mono text-xs", !r.passed && "border-bad")}>
           <span className="flex items-center gap-2 font-sans text-sm font-medium">
-            {r.passed ? <Check className="size-4" /> : <X className="size-4" />} Test {i + 1}
+            {r.passed ? <Check className="size-4 text-good" /> : <X className="size-4 text-bad" />} Test {i + 1}
           </span>
           {!r.passed && (
             <div className="grid gap-1 sm:grid-cols-3 sm:gap-3">
