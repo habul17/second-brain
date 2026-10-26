@@ -1,12 +1,15 @@
 "use client"
 
-import { useRef, useState, type KeyboardEvent, type ReactNode } from "react"
+import { useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react"
+import dynamic from "next/dynamic"
 import { Plus, X } from "lucide-react"
 import { cn } from "cn"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { RichEditor } from "./rich-editor"
+
+const CppEditor = dynamic(() => import("./cpp-editor"), { ssr: false })
 
 /** A labelled block in the editor with an optional one-line hint. */
 export function Field({ label, hint, children, className }: { label: string; hint?: ReactNode; children: ReactNode; className?: string }) {
@@ -135,6 +138,30 @@ export function QAList({ value, onChange, addLabel, questionPlaceholder }: { val
       <Button type="button" variant="outline" size="sm" className="w-fit" onClick={add}>
         <Plus /> {addLabel}
       </Button>
+    </div>
+  )
+}
+
+/** C++ code editor (CodeMirror). The box keeps its height while the editor loads. */
+export function CppInput({
+  value,
+  onChange,
+  placeholder,
+  minHeight = "8rem",
+  "aria-label": label,
+}: {
+  value: string
+  onChange: (code: string) => void
+  placeholder?: string
+  minHeight?: string
+  "aria-label"?: string
+}) {
+  return (
+    <div
+      style={{ "--min-h": minHeight } as CSSProperties}
+      className="code-block min-h-(--min-h) overflow-hidden rounded-lg border border-input bg-card transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50"
+    >
+      <CppEditor value={value} onChange={onChange} placeholder={placeholder} label={label} />
     </div>
   )
 }

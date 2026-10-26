@@ -5,6 +5,7 @@ import Link from "next/link"
 import { AnimatePresence, motion } from "motion/react"
 import { Home, PartyPopper, RotateCcw, X } from "lucide-react"
 import { toast } from "sonner"
+import { cn } from "cn"
 import { submitReviewAction } from "@/actions/review"
 import { Button } from "@/components/ui/button"
 import { celebrate } from "@/lib/celebrate"
@@ -121,7 +122,8 @@ export function ReviewSession({
   }
 
   return (
-    <div className="mx-auto grid w-full max-w-2xl gap-8">
+    // Problems go wide on laptop: problem on the left, your work on the right.
+    <div className={cn("mx-auto grid w-full max-w-2xl gap-8", item.kind === "problem" && "lg:max-w-none")}>
       <div className="grid gap-3">
         <div className="flex items-center justify-between gap-3">
           <span className="min-w-0 truncate text-sm text-muted-foreground">

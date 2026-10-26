@@ -16,7 +16,7 @@ import { backfill } from "@/lib/embedder"
 import { KIND_ICON } from "@/lib/icons"
 import type { NoteInput } from "@/lib/note-input"
 import type { TopicOption } from "@/server/topics"
-import { CodeInput, Field, ListInput, QAList } from "./fields"
+import { CodeInput, CppInput, Field, ListInput, QAList } from "./fields"
 import { RichEditor } from "./rich-editor"
 
 type Tab = "understand" | "code" | "say" | "test"
@@ -357,7 +357,7 @@ export function NoteEditor({ initial, noteId, topicId: initialTopic, topics, pat
         <div className={cn("grid gap-10", tab !== "code" && "hidden")}>
           {isProblem && (
             <Field label="Solution (C++)" hint="The full accepted solution. Shown side by side with yours after you practice.">
-              <CodeInput value={input.solution} onChange={(v) => set("solution", v)} placeholder={"class Solution {\npublic:\n  …\n};"} aria-label="Solution" className="min-h-56" />
+              <CppInput value={input.solution} onChange={(v) => set("solution", v)} placeholder={"class Solution {\npublic:\n  …\n};"} aria-label="Solution" minHeight="14rem" />
             </Field>
           )}
           <Field label={isProblem ? "Extra snippets" : "Code"} hint="Short snippets worth typing out yourself, each with one line per important part.">
@@ -519,10 +519,10 @@ function RunSetup({ input, set }: { input: NoteInput; set: <K extends keyof Note
         </span>
       </div>
       <Field label="Starter code" hint="What you start from in review, e.g. the empty class Solution.">
-        <CodeInput value={input.starterCode} onChange={(v) => set("starterCode", v)} aria-label="Starter code" />
+        <CppInput value={input.starterCode} onChange={(v) => set("starterCode", v)} aria-label="Starter code" />
       </Field>
       <Field label="Test runner (main)" hint="C++ main() added after your code. Reads one test from input, prints the answer.">
-        <CodeInput value={input.harness} onChange={(v) => set("harness", v)} aria-label="Test runner" />
+        <CppInput value={input.harness} onChange={(v) => set("harness", v)} aria-label="Test runner" />
       </Field>
       <Field label="Test cases" hint="Input given to the program, and the exact output expected.">
         <div className="grid gap-3">

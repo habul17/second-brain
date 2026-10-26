@@ -1,11 +1,11 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { ArrowRight, Check, CircleHelp, Loader2, Play, Timer, X } from "lucide-react"
 import { cn } from "cn"
 import { runCodeAction } from "@/actions/review"
 import { CodeBlock } from "@/components/code-block"
-import { CodeInput } from "@/components/editor/fields"
+import { CppInput } from "@/components/editor/fields"
 import { Markdown } from "@/components/markdown"
 import { Button } from "@/components/ui/button"
 import { matchKeyPoints, suggestRating } from "@/lib/keypoints"
@@ -49,6 +49,19 @@ function useCountdown(running: boolean, minutes: number) {
   return { elapsed, over: left < 0, text: `${left < 0 ? "+" : ""}${Math.floor(abs / 60)}:${String(abs % 60).padStart(2, "0")}` }
 }
 
+const LAPTOP = "(min-width: 64rem)"
+
+function subscribeLaptop(onChange: () => void) {
+  const mq = window.matchMedia(LAPTOP)
+  mq.addEventListener("change", onChange)
+  return () => mq.removeEventListener("change", onChange)
+}
+
+/** True on laptop-wide screens (Tailwind's lg). */
+function useLaptop() {
+  return useSyncExternalStore(subscribeLaptop, () => window.matchMedia(LAPTOP).matches, () => false)
+}
+
 /**
  * A DSA problem, like a real interview: read it (title hidden), name the pattern,
  * say the approach, code it against the clock, run the tests, compare with the saved solution.
@@ -59,6 +72,9 @@ export function ProblemReview({ item, allPatterns, onDone }: { item: ReviewItem;
   const followUp = item.followUps.length ? item.followUps[item.reps % item.followUps.length] : null
   const steps: Step[] = [...(hasPatternStep ? (["pattern"] as const) : []), "approach", "code", "compare", ...(followUp ? (["followup"] as const) : [])]
   const [step, setStep] = useState<Step>(steps[0])
+  // Laptop: the problem stays on the left while you work on the right. Phone: stacked.
+  const split = step !== "compare" && step !== "followup"
+  const laptop = useLaptop()
   const started = useRef(0)
   useEffect(() => {
     started.current = Date.now()
@@ -149,144 +165,149 @@ export function ProblemReview({ item, allPatterns, onDone }: { item: ReviewItem;
         ))}
       </ol>
 
-      {step !== "followup" && (
-        <details open={step === "pattern" || step === "approach"} className="group rounded-3xl border bg-card">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-6 py-4 sm:px-8">
-            <span className="font-mono text-xs font-semibold tracking-wider text-muted-foreground uppercase">Problem</span>
-            <span className="text-xs text-muted-foreground group-open:hidden">Show</span>
-          </summary>
-          <div className="px-6 pb-6 sm:px-8 sm:pb-8">
-            <Markdown>{item.statement || "No statement saved for this problem."}</Markdown>
-          </div>
-        </details>
-      )}
-
-      {step === "pattern" && (
-        <div className="grid gap-4">
-          <div className="font-medium">Which pattern solves it?</div>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {[...options, "Not sure"].map((o) => {
-              const isRight = item.patterns.includes(o)
-              const chosen = picked === o
-              return (
-                <button
-                  key={o}
-                  type="button"
-                  disabled={picked !== null}
-                  onClick={() => setPicked(o)}
-                  className={cn(
-                    "flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors",
-                    picked === null && "hover:border-foreground/50",
-                    picked !== null && isRight && "border-foreground bg-foreground text-background",
-                    chosen && !isRight && "border-dashed line-through",
-                  )}
-                >
-                  {picked !== null && isRight ? <Check className="size-4" /> : chosen ? <X className="size-4" /> : o === "Not sure" ? <CircleHelp className="size-4" /> : null}
-                  {o}
-                </button>
-              )
-            })}
-          </div>
-          {picked !== null && (
-            <>
-              <p className="text-sm text-muted-foreground">
-                {patternCorrect ? "Right." : `It's ${item.patterns.join(" + ")}.`} Now say how you&apos;d solve it.
-              </p>
-              <Button size="lg" className="h-12 text-base" onClick={next}>
-                Next: approach <ArrowRight />
-              </Button>
-            </>
-          )}
-        </div>
-      )}
-
-      {step === "approach" && (
-        <div className="grid gap-4">
-          <div className="grid gap-1">
-            <div className="font-medium">Say your approach out loud</div>
-            <p className="text-sm text-muted-foreground">Clarify, brute force, the better idea, then time and space.</p>
-          </div>
-          <VoicePanel voice={voice} matched={heard} />
-          <Button size="lg" className="h-12 text-base" onClick={next}>
-            Next: write the code <ArrowRight />
-          </Button>
-        </div>
-      )}
-
-      {step === "code" && (
-        <div className="grid gap-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="font-medium">Write it in C++</div>
-            <span className={cn("flex items-center gap-1.5 rounded-lg border px-2.5 py-1 font-mono text-sm tabular-nums", timer.over && "border-foreground bg-foreground text-background")}>
-              <Timer className="size-4" /> {timer.text}
-            </span>
-          </div>
-          <CodeInput value={code} onChange={setCode} aria-label="Your code" className="min-h-80" />
-          {item.canRun && (
-            <div className="flex flex-wrap items-center gap-3">
-              <Button variant="outline" onClick={runTests} disabled={running}>
-                {running ? <Loader2 className="animate-spin" /> : <Play />} Run {item.testCount} tests
-              </Button>
-              {run && !run.compileError && (
-                <span className="text-sm tabular-nums">
-                  {passed} of {run.results.length} passed
-                </span>
-              )}
+      <div className={cn("grid gap-6", split && "lg:grid-cols-2 lg:items-start")}>
+        {step !== "followup" && (
+          <details
+            open={step === "pattern" || step === "approach" || (step === "code" && laptop)}
+            className={cn("group rounded-3xl border bg-card", split && "lg:sticky lg:top-20 lg:max-h-[calc(100svh-6rem)] lg:overflow-y-auto")}
+          >
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-6 py-4 sm:px-8">
+              <span className="font-mono text-xs font-semibold tracking-wider text-muted-foreground uppercase">Problem</span>
+              <span className="text-xs text-muted-foreground group-open:hidden">Show</span>
+            </summary>
+            <div className="px-6 pb-6 sm:px-8 sm:pb-8">
+              <Markdown>{item.statement || "No statement saved for this problem."}</Markdown>
             </div>
-          )}
-          {runError && <p className="text-sm font-medium">{runError}</p>}
-          {run && <TestResults run={run} />}
-          <Button size="lg" className="h-12 text-base" onClick={next}>
-            Done: compare with the solution <ArrowRight />
-          </Button>
-        </div>
-      )}
+          </details>
+        )}
 
-      {step === "compare" && (
-        <div className="grid gap-8">
-          <div className="grid gap-4 lg:grid-cols-2">
-            <CodeBlock file="your code" code={code || "// (empty)"} practice={false} />
-            <CodeBlock file="saved solution" code={item.solution || "// No solution saved."} practice={false} />
-          </div>
-          {item.keyPoints.length > 0 && (
-            <div className="grid gap-3">
-              <div className="text-sm font-medium text-muted-foreground">Did your approach cover these? (tap to fix)</div>
-              <Checklist items={item.keyPoints} ticked={ticked} onToggle={(i) => setOverrides((o) => ({ ...o, [i]: !ticked[i] }))} />
+        {step === "pattern" && (
+          <div className="grid gap-4">
+            <div className="font-medium">Which pattern solves it?</div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {[...options, "Not sure"].map((o) => {
+                const isRight = item.patterns.includes(o)
+                const chosen = picked === o
+                return (
+                  <button
+                    key={o}
+                    type="button"
+                    disabled={picked !== null}
+                    onClick={() => setPicked(o)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors",
+                      picked === null && "hover:border-foreground/50",
+                      picked !== null && isRight && "border-foreground bg-foreground text-background",
+                      chosen && !isRight && "border-dashed line-through",
+                    )}
+                  >
+                    {picked !== null && isRight ? <Check className="size-4" /> : chosen ? <X className="size-4" /> : o === "Not sure" ? <CircleHelp className="size-4" /> : null}
+                    {o}
+                  </button>
+                )
+              })}
             </div>
-          )}
-          <div className="flex flex-wrap gap-2 text-sm">
-            {patternCorrect !== null && <span className="rounded-lg border px-3 py-1.5">Pattern: {patternCorrect ? "right" : "missed"}</span>}
-            {run && <span className="rounded-lg border px-3 py-1.5 tabular-nums">Tests: {run.compileError ? "didn't compile" : `${passed}/${run.results.length}`}</span>}
-            <span className="rounded-lg border px-3 py-1.5 tabular-nums">Time: {Math.round(timer.elapsed / 60)} min</span>
+            {picked !== null && (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  {patternCorrect ? "Right." : `It's ${item.patterns.join(" + ")}.`} Now say how you&apos;d solve it.
+                </p>
+                <Button size="lg" className="h-12 text-base" onClick={next}>
+                  Next: approach <ArrowRight />
+                </Button>
+              </>
+            )}
           </div>
-          <RatingButtons preview={item.preview} suggested={score !== null ? suggestRating(score) : null} onRate={rate} disabled={rating !== null} />
-        </div>
-      )}
+        )}
 
-      {step === "followup" && followUp && (
-        <div className="grid gap-6">
-          <PromptCard label="Interviewer follow-up">
-            <div className="text-xl leading-snug font-medium text-balance sm:text-2xl">
-              <Markdown inline>{followUp.q}</Markdown>
+        {step === "approach" && (
+          <div className="grid gap-4">
+            <div className="grid gap-1">
+              <div className="font-medium">Say your approach out loud</div>
+              <p className="text-sm text-muted-foreground">Clarify, brute force, the better idea, then time and space.</p>
             </div>
-            <p className="text-sm text-muted-foreground">Answer out loud first.</p>
-          </PromptCard>
-          {showFollowAnswer ? (
-            <>
-              <PromptCard label="Answer" dark>
-                <Markdown className="text-base leading-[1.85] sm:text-lg [&_code]:bg-background/15">{followUp.a}</Markdown>
-              </PromptCard>
-              <Button size="lg" className="h-12 text-base" onClick={() => finish(rating!)}>
-                Next <ArrowRight />
-              </Button>
-            </>
-          ) : (
-            <Button size="lg" className="h-12 text-base" onClick={() => setShowFollowAnswer(true)}>
-              Show answer
+            <VoicePanel voice={voice} matched={heard} />
+            <Button size="lg" className="h-12 text-base" onClick={next}>
+              Next: write the code <ArrowRight />
             </Button>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+
+        {step === "code" && (
+          <div className="grid gap-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="font-medium">Write it in C++</div>
+              <span className={cn("flex items-center gap-1.5 rounded-lg border px-2.5 py-1 font-mono text-sm tabular-nums", timer.over && "border-foreground bg-foreground text-background")}>
+                <Timer className="size-4" /> {timer.text}
+              </span>
+            </div>
+            <CppInput value={code} onChange={setCode} aria-label="Your code" minHeight="22rem" />
+            {item.canRun && (
+              <div className="flex flex-wrap items-center gap-3">
+                <Button variant="outline" onClick={runTests} disabled={running}>
+                  {running ? <Loader2 className="animate-spin" /> : <Play />} Run {item.testCount} tests
+                </Button>
+                {run && !run.compileError && (
+                  <span className="text-sm tabular-nums">
+                    {passed} of {run.results.length} passed
+                  </span>
+                )}
+              </div>
+            )}
+            {runError && <p className="text-sm font-medium">{runError}</p>}
+            {run && <TestResults run={run} />}
+            <Button size="lg" className="h-12 text-base" onClick={next}>
+              Done: compare with the solution <ArrowRight />
+            </Button>
+          </div>
+        )}
+
+        {step === "compare" && (
+          <div className="grid gap-8">
+            <div className="grid gap-4 lg:grid-cols-2">
+              <CodeBlock file="your code" code={code || "// (empty)"} practice={false} />
+              <CodeBlock file="saved solution" code={item.solution || "// No solution saved."} practice={false} />
+            </div>
+            {item.keyPoints.length > 0 && (
+              <div className="grid gap-3">
+                <div className="text-sm font-medium text-muted-foreground">Did your approach cover these? (tap to fix)</div>
+                <Checklist items={item.keyPoints} ticked={ticked} onToggle={(i) => setOverrides((o) => ({ ...o, [i]: !ticked[i] }))} />
+              </div>
+            )}
+            <div className="flex flex-wrap gap-2 text-sm">
+              {patternCorrect !== null && <span className="rounded-lg border px-3 py-1.5">Pattern: {patternCorrect ? "right" : "missed"}</span>}
+              {run && <span className="rounded-lg border px-3 py-1.5 tabular-nums">Tests: {run.compileError ? "didn't compile" : `${passed}/${run.results.length}`}</span>}
+              <span className="rounded-lg border px-3 py-1.5 tabular-nums">Time: {Math.round(timer.elapsed / 60)} min</span>
+            </div>
+            <RatingButtons preview={item.preview} suggested={score !== null ? suggestRating(score) : null} onRate={rate} disabled={rating !== null} />
+          </div>
+        )}
+
+        {step === "followup" && followUp && (
+          <div className="mx-auto grid w-full max-w-2xl gap-6">
+            <PromptCard label="Interviewer follow-up">
+              <div className="text-xl leading-snug font-medium text-balance sm:text-2xl">
+                <Markdown inline>{followUp.q}</Markdown>
+              </div>
+              <p className="text-sm text-muted-foreground">Answer out loud first.</p>
+            </PromptCard>
+            {showFollowAnswer ? (
+              <>
+                <PromptCard label="Answer" dark>
+                  <Markdown className="text-base leading-[1.85] sm:text-lg [&_code]:bg-background/15">{followUp.a}</Markdown>
+                </PromptCard>
+                <Button size="lg" className="h-12 text-base" onClick={() => finish(rating!)}>
+                  Next <ArrowRight />
+                </Button>
+              </>
+            ) : (
+              <Button size="lg" className="h-12 text-base" onClick={() => setShowFollowAnswer(true)}>
+                Show answer
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
