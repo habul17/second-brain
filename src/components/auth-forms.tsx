@@ -110,21 +110,17 @@ function SocialButtons({ providers }: { providers: Providers }) {
   )
 }
 
-export function LoginForm({ providers }: { providers: Providers }) {
+export function LoginForm({ providers, canReset }: { providers: Providers; canReset: boolean }) {
   const router = useRouter()
-  const { pending, error, setError, run } = useSubmit()
+  const { pending, error, run } = useSubmit()
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const form = new FormData(e.currentTarget)
-    const email = String(form.get("email"))
     const res = await run(() =>
-      authClient.signIn.email({ email, password: String(form.get("password")), callbackURL: "/" }),
+      authClient.signIn.email({ email: String(form.get("email")), password: String(form.get("password")), callbackURL: "/" }),
     )
-    if (res && res.error?.code === "EMAIL_NOT_VERIFIED") {
-      setError(null)
-      router.push(`/check-email?email=${encodeURIComponent(email)}`)
-    } else if (res && !res.error) {
+    if (res && !res.error) {
       router.replace("/")
       router.refresh()
     }
@@ -140,9 +136,11 @@ export function LoginForm({ providers }: { providers: Providers }) {
         <Field
           label="Password"
           aside={
-            <Link href="/forgot-password" className="text-xs text-muted-foreground underline-offset-4 hover:underline">
-              Forgot password?
-            </Link>
+            canReset && (
+              <Link href="/forgot-password" className="text-xs text-muted-foreground underline-offset-4 hover:underline">
+                Forgot password?
+              </Link>
+            )
           }
         >
           <Input name="password" type="password" autoComplete="current-password" required className="h-11" />
@@ -169,16 +167,18 @@ export function SignupForm({ providers }: { providers: Providers }) {
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const form = new FormData(e.currentTarget)
-    const email = String(form.get("email"))
     const res = await run(() =>
       authClient.signUp.email({
         name: String(form.get("name")),
-        email,
+        email: String(form.get("email")),
         password: String(form.get("password")),
         callbackURL: "/",
       }),
     )
-    if (res && !res.error) router.push(`/check-email?email=${encodeURIComponent(email)}`)
+    if (res && !res.error) {
+      router.replace("/")
+      router.refresh()
+    }
   }
 
   return (
@@ -206,39 +206,6 @@ export function SignupForm({ providers }: { providers: Providers }) {
           Log in
         </Link>
       </p>
-    </Card>
-  )
-}
-
-export function CheckEmail() {
-  const email = useSearchParams().get("email") ?? ""
-  const [sent, setSent] = useState(false)
-  const { pending, error, run } = useSubmit()
-
-  async function resend() {
-    const res = await run(() => authClient.sendVerificationEmail({ email, callbackURL: "/" }))
-    if (res && !res.error) setSent(true)
-  }
-
-  return (
-    <Card
-      title="Check your inbox"
-      subtitle={
-        <>
-          We sent a confirmation link to <span className="font-medium text-foreground">{email || "your email"}</span>.
-          Tap it to open your second brain.
-        </>
-      }
-    >
-      <ErrorText>{error}</ErrorText>
-      {email && (
-        <Button variant="outline" size="lg" className="h-11" onClick={resend} disabled={pending || sent}>
-          {pending && <Loader2 className="animate-spin" />} {sent ? "Sent again ✓" : "Send the link again"}
-        </Button>
-      )}
-      <Link href="/login" className="text-center text-sm text-muted-foreground underline underline-offset-4">
-        Back to log in
-      </Link>
     </Card>
   )
 }

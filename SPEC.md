@@ -15,7 +15,7 @@ Everything agreed so far. Build first; learning how it works comes later.
 - Code: **public** GitHub repo. Notes stay private in the database.
 - Works on laptop and phone. Installable on the phone like an app.
 - **Private, multi-user.** Login required. Each person gets their own empty second brain.
-- Login: email + password (with verify-email and forgot-password emails), Google, GitHub.
+- Login: email + password (no email check for now), Google, GitHub. Forgot-password shows once email is set up.
 - Data lives in a real database. Automatic daily backups + "download all my notes" export.
 
 ## Structure
@@ -100,7 +100,7 @@ Two kinds, linked together (a problem says which pattern(s) it uses; a pattern l
 | Database | Postgres on **Neon** (prod), **PGlite** over a socket (local dev) | Real Postgres everywhere; pgvector + full-text built in |
 | ORM | Drizzle | SQL-first, typed, no codegen step |
 | Auth | Better Auth (email+password, Google, GitHub) | Self-hosted auth, sessions in our own DB |
-| Email | Resend (free tier) | Verify-email + reset-password |
+| Email | Resend (free tier) | Reset-password (optional) |
 | Spaced repetition | `ts-fsrs` | FSRS, the algorithm Anki uses |
 | Editor | Tiptap v3 + slash menu + Markdown in/out | `/` menu and `# ` shortcuts; notes stored as Markdown |
 | Search | Postgres `tsvector` + pgvector, merged with RRF | Hybrid search |

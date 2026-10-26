@@ -4,6 +4,9 @@ import { Resend } from "resend"
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 const from = process.env.EMAIL_FROM ?? "Second Brain <noreply@abulhassan.dev>"
 
+/** Password reset only works when email is set up. */
+export const canSendEmail = resend !== null
+
 /** Sends a plain, single-button email. Without a Resend key (local dev) it prints the link instead. */
 export async function sendEmail({ to, subject, intro, button, url }: {
   to: string

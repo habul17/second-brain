@@ -22,7 +22,7 @@ Everything I learn, saved in one place, searchable, and brought back by spaced r
 | UI | Tailwind v4, shadcn/ui, Motion | Accessible components, black-and-white design |
 | Database | Postgres (Neon) with pgvector + pg_trgm, Drizzle ORM | One database does relational data, full-text, fuzzy and vector search |
 | Local DB | PGlite (Postgres in WebAssembly) over a socket | Real Postgres locally with no Docker |
-| Auth | Better Auth: email + password (verified), Google, GitHub | Sessions in my own database |
+| Auth | Better Auth: email + password, Google, GitHub | Sessions in my own database |
 | Scheduling | `ts-fsrs` | Models memory per note; ~20–30% fewer reviews than SM-2 for the same recall |
 | Embeddings | MiniLM-L6 (384-d) via Transformers.js in a Web Worker | Computed on the user's device: no API bill, nothing sent to a third party |
 | Editor | Tiptap v3 with a `/` menu and Markdown shortcuts | Notes stored as Markdown |
@@ -43,7 +43,7 @@ pnpm db:migrate
 pnpm dev                        # http://localhost:3000
 ```
 
-Without email set up, sign-up verification links are printed in the dev server log.
+Without email set up, the "Forgot password?" link is hidden.
 
 ### Connect Claude Code
 

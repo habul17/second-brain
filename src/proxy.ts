@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { getSessionCookie } from "better-auth/cookies"
 
-const PUBLIC = ["/login", "/signup", "/forgot-password", "/reset-password", "/check-email"]
+const PUBLIC = ["/login", "/signup", "/forgot-password", "/reset-password"]
 
 // Fast, optimistic check: no session cookie → go log in. Pages still verify the session for real.
 export function proxy(request: NextRequest) {

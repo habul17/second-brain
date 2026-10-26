@@ -27,7 +27,6 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: true,
     minPasswordLength: 8,
     revokeSessionsOnPasswordReset: true,
     sendResetPassword: async ({ user, url }) => {
@@ -36,20 +35,6 @@ export const auth = betterAuth({
         subject: "Reset your Second Brain password",
         intro: "Tap the button to choose a new password. The link works for 1 hour.",
         button: "Reset password",
-        url,
-      })
-    },
-  },
-  emailVerification: {
-    sendOnSignUp: true,
-    sendOnSignIn: true,
-    autoSignInAfterVerification: true,
-    sendVerificationEmail: async ({ user, url }) => {
-      await sendEmail({
-        to: user.email,
-        subject: "Confirm your email for Second Brain",
-        intro: `Hi ${user.name}, tap the button to confirm your email and open your second brain.`,
-        button: "Confirm email",
         url,
       })
     },
