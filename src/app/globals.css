@@ -2,12 +2,15 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/jetbrains-mono/wght.css";
+@import "@fontsource-variable/inter/wght.css";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  /* JetBrains Mono everywhere: tall letters, clear l/1/I and 0/O. */
+  /* JetBrains Mono for the app and code: tall letters, clear l/1/I and 0/O. */
   --font-sans: "JetBrains Mono Variable", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  /* Long reading text (note bodies, answers) in a proportional font: easier on the eyes for paragraphs. */
+  --font-reading: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-sans);
   --font-mono: "JetBrains Mono Variable", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --color-ring: var(--ring);
@@ -152,11 +155,13 @@
 .code-block .sh__token--keyword { font-weight: 700; }
 .code-block .sh__token--comment { font-style: italic; }
 
-/* Rendered Markdown (note bodies). Calm spacing, readable line length. */
+/* Rendered Markdown (note bodies). Calm spacing, readable line length. Headings and code stay mono. */
 .prose-note {
   line-height: 1.75;
   font-size: 0.95rem;
+  font-family: var(--font-reading);
 }
+.prose-note :is(h1, h2, h3, h4, code, pre) { font-family: var(--font-mono); }
 .prose-note > * + * { margin-top: 1rem; }
 .prose-note > :first-child { margin-top: 0; }
 .prose-note h1 { font-size: 1.5rem; font-weight: 700; margin-top: 2rem; letter-spacing: -0.01em; }

@@ -91,6 +91,7 @@ Two kinds, linked together (a problem says which pattern(s) it uses; a pattern l
 ## Look and feel
 
 - Same as `100xDevs/Advance/notes-app`: **black and white**, **JetBrains Mono**, light/dark switch.
+- Long reading text (note bodies, answers) in **Inter**, easier to read in paragraphs. Headings and code stay JetBrains Mono. One commit, easy to revert.
 - Three signal colours only for results: green (Nailed it, test passed), amber (Shaky), red (Forgot, failed, delete). One commit, easy to revert.
 
 ## Tech choices (all $0)
