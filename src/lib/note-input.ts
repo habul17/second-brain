@@ -49,7 +49,7 @@ export const noteFields = {
   harness: z
     .string()
     .describe(
-      "DSA problem only: C++ `int main()` appended after the user's code. It reads ONE test case from stdin, calls Solution, and prints the result exactly like `expected`. Include needed headers at the top of the user's code, not here.",
+      "DSA problem only: C++ `int main()` appended after the user's code. It reads ONE test case with cin, calls Solution, and prints the result with cout exactly like `expected`. Only cin/cout (no scanf, printf or exit): main runs once per test in one program. Include needed headers at the top of the user's code, not here.",
     ),
   testCases: z
     .array(z.object({ input: z.string(), expected: z.string() }))

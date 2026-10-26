@@ -27,7 +27,7 @@ Everything I learn, saved in one place, searchable, and brought back by spaced r
 | Embeddings | MiniLM-L6 (384-d) via Transformers.js in a Web Worker | Computed on the user's device: no API bill, nothing sent to a third party |
 | Editor | Tiptap v3 with a `/` menu and Markdown shortcuts | Notes stored as Markdown |
 | Claude integration | MCP server (`mcp-handler`) at `/api/mcp` | Keys stored as SHA-256 hashes only |
-| C++ runner | Wandbox in production, local `g++` in development | Behind one small adapter |
+| C++ runner | Compiler Explorer in production (Wandbox as backup), local `g++` in development | One compile runs every test |
 | Reminders | Web Push (VAPID) + service worker; GitHub Actions every 15 min | Vercel's free cron runs once a day |
 | Backups | Nightly `pg_dump`, AES-256 encrypted, stored as a GitHub artifact | The repo is public |
 

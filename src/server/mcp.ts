@@ -37,7 +37,7 @@ DSA
 - kind "pattern" for a technique (e.g. Sliding Window). Fill signals: phrases in a problem that point to it.
 - kind "problem" for a problem. Fill: statement (full text, examples, constraints), difficulty, link, patterns (titles of pattern notes; create a missing pattern note too), sayIt in this order: clarify, brute force, optimal idea, complexity, edge cases.
 - The user codes in C++. starterCode and solution start with #include <bits/stdc++.h> and using namespace std, then class Solution.
-- harness: a C++ int main() that is appended after the user's code. It reads ONE test case from stdin, calls Solution, and prints the result exactly as in expected. testCases: 3 to 6, including edge cases; input is exactly what main reads.
+- harness: a C++ int main() that is appended after the user's code. It reads ONE test case with cin, calls Solution, and prints the result with cout exactly as in expected. Use only cin/cout (no scanf, printf or exit) and no global state: main runs once per test in the same program. testCases: 3 to 6, including edge cases; input is exactly what main reads.
 - timeLimitMin: minutes to solve it in an interview (easy 15, medium 25, hard 40).
 
 Style

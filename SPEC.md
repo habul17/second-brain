@@ -106,7 +106,7 @@ Two kinds, linked together (a problem says which pattern(s) it uses; a pattern l
 | Search | Postgres `tsvector` + pgvector, merged with RRF | Hybrid search |
 | Embeddings | Open-source MiniLM (384-d) run with Transformers.js in a Web Worker | On-device, no API, no cost |
 | Claude → site | Remote **MCP server** at `/api/mcp`, per-user API key (hashed) | Any MCP client can save notes |
-| C++ runner | Server action → free Wandbox compiler (local `g++` in development) | Swappable adapter |
+| C++ runner | Server action → free Compiler Explorer API, Wandbox as backup (local `g++` in development). One compile runs every test. | Swappable adapter |
 | Reminders | Web Push (VAPID) + service worker; GitHub Actions cron every 15 min | Vercel Hobby cron only runs once a day |
 | Backups | GitHub Actions nightly `pg_dump`, **encrypted** before upload | Repo is public, so backups must be encrypted |
 
@@ -116,7 +116,7 @@ Two kinds, linked together (a problem says which pattern(s) it uses; a pattern l
 - Voice check uses the browser's speech recognition: Chrome, Edge, Safari. Not Firefox → manual ticking still works.
 - Claude connection v1 = Claude Code (API key header). claude.ai web connectors need OAuth → later.
 - Meaning search downloads a ~23 MB model the first time search is opened, then it's cached. Word search works instantly meanwhile.
-- C++ runner depends on a free public compiler service; if it's down, compare-with-solution still works. Not yet tried against Wandbox itself (tested with local `g++`).
+- C++ runner depends on free public compiler services; if both are down, compare-with-solution still works. Wandbox alone timed out in production (one compile per test was too slow), hence one compile for all tests.
 - GitHub turns off scheduled workflows in a public repo after 60 days with no commits. If reminders stop, re-enable the workflow in the Actions tab (or move the 15-minute ping to cron-job.org).
 - GitHub's scheduled jobs can start a few minutes late, so a reminder may arrive up to ~20 minutes after the chosen time.
 
