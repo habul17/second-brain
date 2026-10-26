@@ -40,21 +40,21 @@ export default async function NotePage({ params }: PageProps<"/n/[noteId]">) {
   const KindIcon = KIND_ICON[note.kind]
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-10">
-      <header className="grid gap-4">
-        <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 text-sm text-muted-foreground">
-          <Link href={`/s/${section.id}`} className="truncate hover:text-foreground">
-            {section.name}
-          </Link>
-          <ChevronRight className="size-3.5 shrink-0" />
-          <Link href={`/s/${section.id}#t-${topic.id}`} className="truncate hover:text-foreground">
-            {topic.name}
-          </Link>
-        </nav>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <h1 className="min-w-0 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">{note.title}</h1>
+    <div className="mx-auto grid w-full max-w-3xl grid-cols-1 gap-10">
+      <header className="grid grid-cols-1 gap-4">
+        <div className="flex items-center justify-between gap-3">
+          <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 text-sm text-muted-foreground">
+            <Link href={`/s/${section.id}`} className="truncate hover:text-foreground">
+              {section.name}
+            </Link>
+            <ChevronRight className="size-3.5 shrink-0" />
+            <Link href={`/s/${section.id}#t-${topic.id}`} className="truncate hover:text-foreground">
+              {topic.name}
+            </Link>
+          </nav>
           <NoteMenu note={note} sectionId={section.id} topics={topics} />
         </div>
+        <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">{note.title}</h1>
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           {note.kind !== "concept" && (
             <span className="flex items-center gap-1.5 rounded-md border px-2 py-1 font-medium text-foreground">

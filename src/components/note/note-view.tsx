@@ -77,8 +77,8 @@ export function NoteView({ full, nextReview }: Props) {
   const isLast = step === steps.length - 1
 
   return (
-    <div className="grid gap-10">
-      {/* Stepper */}
+    <div className="grid grid-cols-1 gap-10">
+      {/* Stepper: tabs fit their label on phone, equal widths from sm up */}
       <nav aria-label="Steps" className="flex gap-2 rounded-2xl border bg-card p-2">
         {steps.map((s, i) => {
           const { label, icon: Icon } = STEP_META[s]
@@ -90,7 +90,7 @@ export function NoteView({ full, nextReview }: Props) {
               onClick={() => goTo(i)}
               aria-current={active ? "step" : undefined}
               className={cn(
-                "relative flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl px-1 py-3 text-[0.8rem] font-medium transition-colors sm:px-2 sm:text-sm",
+                "relative flex min-w-0 flex-auto items-center justify-center gap-2 rounded-xl px-2 py-3 text-[0.8rem] font-medium transition-colors sm:flex-1 sm:text-sm",
                 active ? "text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
             >
@@ -101,7 +101,7 @@ export function NoteView({ full, nextReview }: Props) {
                   transition={{ type: "spring", stiffness: 380, damping: 32 }}
                 />
               )}
-              <span className="relative flex items-center gap-2">
+              <span className="relative flex min-w-0 items-center gap-2">
                 {i < step ? <Check className="hidden size-4 sm:block" /> : <Icon className="hidden size-4 sm:block" />}
                 <span className="truncate">{label}</span>
               </span>

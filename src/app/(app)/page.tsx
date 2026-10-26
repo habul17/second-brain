@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowRight, Check, Flame, Layers, Plug } from "lucide-react"
+import { ArrowRight, Check, Flame, Layers, Plug, Swords } from "lucide-react"
 import { Heatmap } from "@/components/heatmap"
 import { NewSectionCard } from "@/components/home/new-section-card"
 import { Button } from "@/components/ui/button"
@@ -8,7 +8,7 @@ import { recentNotes } from "@/server/notes"
 import { listSectionsWithCounts } from "@/server/sections"
 import { requireUser } from "@/server/session"
 import { getSettings } from "@/server/settings"
-import { activity, dueSummary } from "@/server/stats"
+import { activity, dueSummary, weakSpots } from "@/server/stats"
 
 export const metadata = { title: "Home" }
 
@@ -25,11 +25,12 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`
 export default async function HomePage() {
   const user = await requireUser()
   const settings = await getSettings(user.id)
-  const [sections, due, stats, recent] = await Promise.all([
+  const [sections, due, stats, recent, weak] = await Promise.all([
     listSectionsWithCounts(user.id),
     dueSummary(user.id),
     activity(user.id, settings.timezone),
     recentNotes(user.id),
+    weakSpots(user.id, 30),
   ])
   const totalNotes = sections.reduce((sum, s) => sum + s.noteCount, 0)
   const firstName = user.name.split(/\s+/)[0]
@@ -91,6 +92,24 @@ export default async function HomePage() {
             </Button>
           ) : null}
         </div>
+
+        {/* Other ways to practice: findable, but quieter than Start review. */}
+        {totalNotes > 0 && (
+          <div className="-mt-2 flex flex-wrap gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link href="/mock">
+                <Swords /> Mock interview
+              </Link>
+            </Button>
+            {weak.length > 0 && (
+              <Button asChild variant="outline" size="sm">
+                <Link href="/weak">
+                  <Flame /> Weak spots <span className="text-muted-foreground tabular-nums">{weak.length}</span>
+                </Link>
+              </Button>
+            )}
+          </div>
+        )}
 
         {reviewedRecently && (
           <div className="grid gap-6 border-t pt-6 sm:grid-cols-[auto_minmax(0,1fr)] sm:gap-10 sm:pt-8">

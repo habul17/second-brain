@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Dumbbell, FolderInput, Loader2, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
+import { Code2, Dumbbell, FolderInput, Loader2, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { deleteNoteAction, moveNoteAction } from "@/actions/library"
 import { ConfirmDelete } from "@/components/section-actions"
@@ -17,10 +17,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select"
+import type { NoteKind } from "@/db/schema"
 import type { TopicOption } from "@/server/topics"
 
 interface Props {
-  note: { id: string; title: string; topicId: string }
+  note: { id: string; title: string; topicId: string; kind: NoteKind }
   sectionId: string
   topics: TopicOption[]
 }
@@ -54,11 +55,25 @@ export function NoteMenu({ note, sectionId, topics }: Props) {
 
   return (
     <div className="flex shrink-0 items-center gap-2">
-      <Button asChild variant="outline">
+      <Button asChild variant="outline" aria-label="Edit">
         <Link href={`/n/${note.id}/edit`}>
-          <Pencil /> Edit
+          <Pencil /> <span className="hidden sm:inline">Edit</span>
         </Link>
       </Button>
+      {/* Problems: solving is the main thing to do here. Other notes: a quick practice round. */}
+      {note.kind === "problem" ? (
+        <Button asChild>
+          <Link href={`/practice?notes=${note.id}`}>
+            <Code2 /> Solve
+          </Link>
+        </Button>
+      ) : (
+        <Button asChild variant="outline" aria-label="Practice">
+          <Link href={`/practice?notes=${note.id}`}>
+            <Dumbbell /> <span className="hidden sm:inline">Practice</span>
+          </Link>
+        </Button>
+      )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" aria-label="Note options">
@@ -66,11 +81,6 @@ export function NoteMenu({ note, sectionId, topics }: Props) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuItem asChild>
-            <Link href={`/practice?notes=${note.id}`}>
-              <Dumbbell /> Practice now
-            </Link>
-          </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={() => {
               setTarget(note.topicId)
