@@ -33,55 +33,20 @@ export default async function HomePage() {
   ])
   const totalNotes = sections.reduce((sum, s) => sum + s.noteCount, 0)
   const firstName = user.name.split(/\s+/)[0]
+  // No streak or heatmap until there is something to show.
+  const reviewedRecently = stats.cells.some((c) => c.n > 0)
 
   return (
-    <div className="grid gap-14">
+    <div className="grid gap-10 sm:gap-14">
       <header className="grid gap-2">
         <p className="font-mono text-xs tracking-wider text-muted-foreground uppercase">
           {greeting(settings.timezone)}, {firstName}
         </p>
-        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Your second brain</h1>
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-4xl">Your second brain</h1>
       </header>
 
-      {/* Sections */}
-      <section aria-labelledby="sections" className="grid gap-5">
-        <h2 id="sections" className="text-sm font-medium text-muted-foreground">
-          Sections
-        </h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {sections.map((s) => {
-            return (
-              <Link
-                key={s.id}
-                href={`/s/${s.id}`}
-                className="group grid content-between gap-4 rounded-3xl border bg-card p-5 sm:min-h-40 sm:gap-6 sm:p-6 transition-colors hover:border-foreground/40"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <span className="grid size-11 place-items-center rounded-2xl bg-foreground text-background">
-                    <SectionIcon name={s.name} className="size-5" />
-                  </span>
-                  {s.dueCount > 0 && (
-                    <span className="rounded-full border px-2.5 py-0.5 font-mono text-xs tabular-nums">{s.dueCount} due</span>
-                  )}
-                </div>
-                <div className="flex items-end justify-between gap-3">
-                  <div className="grid min-w-0 gap-1">
-                    <span className="truncate text-lg font-semibold">{s.name}</span>
-                    <span className="text-sm text-muted-foreground tabular-nums">
-                      {plural(s.topicCount, "topic")} · {plural(s.noteCount, "note")}
-                    </span>
-                  </div>
-                  <ArrowRight className="size-5 shrink-0 -translate-x-1 opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100" />
-                </div>
-              </Link>
-            )
-          })}
-          <NewSectionCard />
-        </div>
-      </section>
-
-      {/* Today's review */}
-      <section aria-labelledby="today" className="grid gap-8 rounded-3xl border bg-card p-6 sm:p-8">
+      {/* Today's review: first on phone, after the sections from sm up */}
+      <section aria-labelledby="today" className="grid gap-6 rounded-3xl border bg-card p-5 sm:order-1 sm:gap-8 sm:p-8">
         <div className="flex flex-wrap items-center justify-between gap-6">
           <div className="grid gap-1.5">
             <h2 id="today" className="font-mono text-xs font-semibold tracking-wider text-muted-foreground uppercase">
@@ -127,26 +92,68 @@ export default async function HomePage() {
           ) : null}
         </div>
 
-        <div className="grid gap-6 border-t pt-8 sm:grid-cols-[auto_minmax(0,1fr)] sm:gap-10">
-          <div className="flex gap-8 sm:grid sm:content-start sm:gap-6">
-            <div className="grid gap-0.5">
-              <span className="flex items-center gap-2 text-3xl font-semibold tabular-nums">
-                <Flame className="size-6" /> {stats.streak}
-              </span>
-              <span className="text-sm text-muted-foreground">day streak</span>
+        {reviewedRecently && (
+          <div className="grid gap-6 border-t pt-6 sm:grid-cols-[auto_minmax(0,1fr)] sm:gap-10 sm:pt-8">
+            <div className="flex gap-8 sm:grid sm:content-start sm:gap-6">
+              <div className="grid gap-0.5">
+                <span className="flex items-center gap-2 text-3xl font-semibold tabular-nums">
+                  <Flame className="size-6" /> {stats.streak}
+                </span>
+                <span className="text-sm text-muted-foreground">day streak</span>
+              </div>
+              <div className="grid gap-0.5">
+                <span className="text-3xl font-semibold tabular-nums">{stats.reviewedToday}</span>
+                <span className="text-sm text-muted-foreground">reviewed today</span>
+              </div>
             </div>
-            <div className="grid gap-0.5">
-              <span className="text-3xl font-semibold tabular-nums">{stats.reviewedToday}</span>
-              <span className="text-sm text-muted-foreground">reviewed today</span>
-            </div>
+            <Heatmap cells={stats.cells} />
           </div>
-          <Heatmap cells={stats.cells} />
+        )}
+      </section>
+
+      {/* Sections */}
+      <section aria-labelledby="sections" className="grid gap-4 sm:gap-5">
+        <h2 id="sections" className="text-sm font-medium text-muted-foreground">
+          Sections
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+          {sections.map((s) => {
+            return (
+              <Link
+                key={s.id}
+                href={`/s/${s.id}`}
+                className="group flex items-center gap-4 rounded-3xl border bg-card p-4 transition-colors hover:border-foreground/40 sm:grid sm:min-h-40 sm:content-between sm:gap-6 sm:p-6"
+              >
+                {/* "contents" on phone: icon, text and badge sit in one row */}
+                <div className="contents sm:flex sm:items-start sm:justify-between sm:gap-3">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-foreground text-background sm:size-11">
+                    <SectionIcon name={s.name} className="size-5" />
+                  </span>
+                  {s.dueCount > 0 && (
+                    <span className="order-last shrink-0 rounded-full border px-2.5 py-0.5 font-mono text-xs tabular-nums sm:order-none">
+                      {s.dueCount} due
+                    </span>
+                  )}
+                </div>
+                <div className="flex min-w-0 flex-1 items-end justify-between gap-3">
+                  <div className="grid min-w-0 gap-0.5 sm:gap-1">
+                    <span className="truncate text-lg font-semibold">{s.name}</span>
+                    <span className="text-sm text-muted-foreground tabular-nums">
+                      {plural(s.topicCount, "topic")} · {plural(s.noteCount, "note")}
+                    </span>
+                  </div>
+                  <ArrowRight className="hidden size-5 shrink-0 -translate-x-1 opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100 sm:block" />
+                </div>
+              </Link>
+            )
+          })}
+          <NewSectionCard />
         </div>
       </section>
 
       {/* Recently added */}
       {recent.length > 0 && (
-        <section aria-labelledby="recent" className="grid gap-5">
+        <section aria-labelledby="recent" className="grid gap-5 sm:order-2">
           <h2 id="recent" className="text-sm font-medium text-muted-foreground">
             Recently added
           </h2>

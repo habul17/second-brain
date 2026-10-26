@@ -79,7 +79,8 @@ Two kinds, linked together (a problem says which pattern(s) it uses; a pattern l
 ## Homepage
 
 - **Sections first** (Web Dev, DSA, AI…).
-- Today's review card below the sections.
+- Today's review card below the sections. On phone it comes first, so Start review is on the first screen.
+- Streak + heatmap show after the first review.
 - A **Review** button with a count (e.g. `Review 5`) in the top bar on every page.
 
 ## Search
