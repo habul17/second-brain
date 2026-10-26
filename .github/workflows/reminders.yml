@@ -16,4 +16,5 @@ jobs:
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           APP_URL: ${{ vars.APP_URL || 'https://secondbrain.abulhassan.dev' }}
-        run: curl -fsS --max-time 90 -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/reminders"
+        run: |
+          curl -fsS --max-time 90 -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/reminders"
