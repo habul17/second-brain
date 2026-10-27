@@ -2,16 +2,16 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/jetbrains-mono/wght.css";
-@import "@fontsource-variable/inter/wght.css";
+@import "@fontsource-variable/atkinson-hyperlegible-next/wght.css";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  /* JetBrains Mono for the app and code: tall letters, clear l/1/I and 0/O. */
-  --font-sans: "JetBrains Mono Variable", ui-monospace, "SFMono-Regular", Menlo, monospace;
-  /* Long reading text (note bodies, answers) in a proportional font: easier on the eyes for paragraphs. */
-  --font-reading: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  /* Atkinson Hyperlegible for everything you read: built so no two letters look alike. */
+  --font-sans: "Atkinson Hyperlegible Next Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-reading: var(--font-sans);
   --font-heading: var(--font-sans);
+  /* JetBrains Mono for code only. */
   --font-mono: "JetBrains Mono Variable", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --color-ring: var(--ring);
   --color-input: var(--input);
@@ -32,6 +32,7 @@
   --color-foreground: var(--foreground);
   --color-background: var(--background);
   --color-highlight: var(--highlight);
+  --color-scrim: var(--scrim);
   --color-good: var(--good);
   --color-okay: var(--okay);
   --color-bad: var(--bad);
@@ -48,54 +49,56 @@
  * Three signal colours, used only for results: good (Nailed it, test passed), okay (Shaky), bad (Forgot, failed, delete).
  */
 :root {
-  --background: oklch(0.985 0 0);
-  --foreground: oklch(0.16 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.16 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.16 0 0);
-  --primary: oklch(0.16 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.955 0 0);
-  --secondary-foreground: oklch(0.16 0 0);
-  --muted: oklch(0.955 0 0);
-  --muted-foreground: oklch(0.47 0 0);
-  --accent: oklch(0.94 0 0);
-  --accent-foreground: oklch(0.16 0 0);
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --card: #fafafa;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+  --primary: #0a0a0a;
+  --primary-foreground: #ffffff;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #0a0a0a;
+  --muted: #f5f5f5;
+  --muted-foreground: #737373;
+  --accent: #f0f0f0;
+  --accent-foreground: #0a0a0a;
   --destructive: var(--bad);
-  --border: oklch(0.89 0 0);
-  --input: oklch(0.88 0 0);
-  --ring: oklch(0.35 0 0);
+  --border: #e5e5e5;
+  --input: #e5e5e5;
+  --ring: #525252;
   --radius: 0.75rem;
-  --highlight: oklch(0.85 0 0);
-  --good: oklch(0.56 0.14 152);
-  --okay: oklch(0.72 0.15 68);
-  --bad: oklch(0.58 0.2 27);
+  --highlight: #d4d4d4;
+  --scrim: rgb(0 0 0 / 0.18);
+  --good: #2f8a57;
+  --okay: #c98419;
+  --bad: #cf4436;
 }
 
 .dark {
-  --background: oklch(0.13 0 0);
-  --foreground: oklch(0.95 0 0);
-  --card: oklch(0.175 0 0);
-  --card-foreground: oklch(0.95 0 0);
-  --popover: oklch(0.175 0 0);
-  --popover-foreground: oklch(0.95 0 0);
-  --primary: oklch(0.95 0 0);
-  --primary-foreground: oklch(0.13 0 0);
-  --secondary: oklch(0.23 0 0);
-  --secondary-foreground: oklch(0.95 0 0);
-  --muted: oklch(0.22 0 0);
-  --muted-foreground: oklch(0.68 0 0);
-  --accent: oklch(0.25 0 0);
-  --accent-foreground: oklch(0.95 0 0);
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+  --card: #141414;
+  --card-foreground: #fafafa;
+  --popover: #141414;
+  --popover-foreground: #fafafa;
+  --primary: #fafafa;
+  --primary-foreground: #0a0a0a;
+  --secondary: #1c1c1c;
+  --secondary-foreground: #fafafa;
+  --muted: #1c1c1c;
+  --muted-foreground: #a3a3a3;
+  --accent: #1c1c1c;
+  --accent-foreground: #fafafa;
   --destructive: var(--bad);
-  --border: oklch(1 0 0 / 13%);
-  --input: oklch(1 0 0 / 16%);
-  --ring: oklch(0.75 0 0);
-  --highlight: oklch(1 0 0 / 24%);
-  --good: oklch(0.74 0.15 152);
-  --okay: oklch(0.8 0.14 75);
-  --bad: oklch(0.7 0.18 25);
+  --border: #262626;
+  --input: #2e2e2e;
+  --ring: #a3a3a3;
+  --highlight: rgb(255 255 255 / 0.24);
+  --scrim: rgb(0 0 0 / 0.45);
+  --good: #4cc38a;
+  --okay: #f0b44c;
+  --bad: #f07a6a;
 }
 
 @layer base {
@@ -111,7 +114,9 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
-    /* No ligatures: show === and => exactly as you type them. */
+  }
+  /* No ligatures in code: show === and => exactly as you type them. */
+  code, pre, kbd, .font-mono, .cm-editor {
     font-variant-ligatures: none;
     font-feature-settings: "calt" 0, "liga" 0;
   }
@@ -155,13 +160,26 @@
 .code-block .sh__token--keyword { font-weight: 700; }
 .code-block .sh__token--comment { font-style: italic; }
 
-/* Rendered Markdown (note bodies). Calm spacing, readable line length. Headings and code stay mono. */
+/* Line numbers for read-only code with no box around it (review compare step). */
+.code-lines { counter-reset: ln; }
+.code-lines .sh__line::before {
+  counter-increment: ln;
+  content: counter(ln);
+  display: inline-block;
+  width: 1.6em;
+  margin-right: 1.4em;
+  text-align: right;
+  color: var(--muted-foreground);
+  opacity: 0.5;
+}
+
+/* Rendered Markdown (note bodies). Calm spacing, readable line length. Code stays mono. */
 .prose-note {
   line-height: 1.75;
-  font-size: 0.95rem;
+  font-size: 1.0625rem;
   font-family: var(--font-reading);
 }
-.prose-note :is(h1, h2, h3, h4, code, pre) { font-family: var(--font-mono); }
+.prose-note :is(code, pre) { font-family: var(--font-mono); }
 .prose-note > * + * { margin-top: 1rem; }
 .prose-note > :first-child { margin-top: 0; }
 .prose-note h1 { font-size: 1.5rem; font-weight: 700; margin-top: 2rem; letter-spacing: -0.01em; }

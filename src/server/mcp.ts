@@ -22,8 +22,8 @@ When to save
 - One idea per note. The title names the idea in a few words, e.g. "How JWT auth works".
 
 Where it goes
-- Call list_sections. Put the note in the right section (e.g. Web Dev, DSA, AI).
-- Reuse an existing topic when it fits; otherwise name a new short topic (it is created for you).
+- Call list_sections. Put the note in the right section (e.g. Dev, DSA, AI).
+- Topics can have one level of subtopics, written "React › Hooks". Reuse an existing topic or subtopic when it fits; otherwise name a new short one (it is created for you).
 
 The 4 steps (fill all of them)
 1. understand (Markdown): everything needed to fully get it after one read. Plain words first, then an analogy, steps, a table or a \`\`\`mermaid diagram where they help, and a small example. Link related notes with [[Exact note title]].
@@ -128,8 +128,8 @@ export const mcpHandler = createMcpHandler(
         description:
           "Save a new note to the user's Second Brain. Only after the user says they fully understand the idea. The topic is created if it doesn't exist. The note comes up for review tomorrow.",
         inputSchema: noteInput.extend({
-          section: z.string().min(1).describe("Section name, e.g. Web Dev, DSA, AI (see list_sections)"),
-          topic: z.string().min(1).max(80).describe("Topic name inside the section, e.g. React hooks. Reuse an existing one when it fits."),
+          section: z.string().min(1).describe("Section name, e.g. Dev, DSA, AI (see list_sections)"),
+          topic: z.string().min(1).max(160).describe('Topic inside the section, e.g. "React" or a subtopic "React › Hooks". Reuse an existing one when it fits.'),
         }),
       },
       async ({ section: sectionName, topic: topicName, ...input }, ctx) => {
@@ -164,7 +164,7 @@ export const mcpHandler = createMcpHandler(
           note: z.string().min(1).describe("The note's exact title (or id)"),
           changes: noteChanges.describe("Only the fields to change. To rename, send a new title."),
           section: z.string().optional().describe("Move to this section (with topic)"),
-          topic: z.string().max(80).optional().describe("Move to this topic (created if missing)"),
+          topic: z.string().max(160).optional().describe('Move to this topic or subtopic, e.g. "React › Hooks" (created if missing)'),
         }),
       },
       async ({ note, changes, section: sectionName, topic: topicName }, ctx) => {

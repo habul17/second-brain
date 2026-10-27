@@ -4,6 +4,7 @@ import { db } from "@/db"
 import { cards, noteLinks, notePatterns, notes, sections, topics } from "@/db/schema"
 import type { NoteInput } from "@/lib/note-input"
 import { newCard } from "@/server/fsrs"
+import { parentName, topicPath } from "@/server/topic-path"
 
 export class NoteError extends Error {}
 
@@ -177,6 +178,8 @@ export async function getNote(userId: string, noteId: string) {
     .select({
       note: notes,
       topicName: topics.name,
+      parentId: topics.parentId,
+      parentName,
       sectionId: sections.id,
       sectionName: sections.name,
       card: cards,
@@ -216,7 +219,7 @@ export async function getNote(userId: string, noteId: string) {
   const { embedding: _e, search: _s, ...note } = row.note
   return {
     note,
-    topic: { id: note.topicId, name: row.topicName },
+    topic: { id: note.topicId, name: row.topicName, parent: row.parentId ? { id: row.parentId, name: row.parentName ?? "" } : null },
     section: { id: row.sectionId, name: row.sectionName },
     card: row.card,
     patterns,
@@ -265,7 +268,7 @@ export async function findNoteByTitle(userId: string, title: string) {
 
 export async function recentNotes(userId: string, limit = 6) {
   return db
-    .select({ id: notes.id, title: notes.title, kind: notes.kind, topicName: topics.name, sectionName: sections.name, createdAt: notes.createdAt })
+    .select({ id: notes.id, title: notes.title, kind: notes.kind, topicName: topicPath, sectionName: sections.name, createdAt: notes.createdAt })
     .from(notes)
     .innerJoin(topics, eq(topics.id, notes.topicId))
     .innerJoin(sections, eq(sections.id, topics.sectionId))

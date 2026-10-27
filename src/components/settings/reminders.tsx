@@ -1,12 +1,11 @@
 "use client"
 
 import { useState, useSyncExternalStore } from "react"
-import { Bell, BellOff, Loader2, Send, Smartphone } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { disableRemindersAction, enableRemindersAction, sendTestPushAction, setReminderTimeAction } from "@/actions/settings"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
+import { Row } from "./row"
 
 type Support = "yes" | "ios-install" | "no" | "unknown"
 
@@ -69,62 +68,40 @@ export function Reminders({ enabled: initialEnabled, time: initialTime }: { enab
   }
 
   if (support === "ios-install") {
-    return (
-      <div className="flex gap-3 rounded-2xl border border-dashed p-4 text-sm leading-relaxed">
-        <Smartphone className="mt-0.5 size-5 shrink-0" />
-        <p>
-          On iPhone, first add Second Brain to your Home Screen: tap <span className="font-medium">Share</span>, then{" "}
-          <span className="font-medium">Add to Home Screen</span>. Open it from there and turn this on.
-        </p>
-      </div>
-    )
+    return <Row label="Reminder" sub="On iPhone, first tap Share › Add to Home Screen. Open the app from there and turn this on." />
   }
   if (support === "no") {
-    return <p className="text-sm text-muted-foreground">This browser can&apos;t show reminders. Try Chrome, Edge, or Safari.</p>
+    return <Row label="Reminder" sub="This browser can't show reminders. Try Chrome, Edge or Safari." />
   }
 
   return (
-    <div className="grid gap-5">
-      <label htmlFor="reminders" className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border p-4">
-        <span className="flex items-center gap-3">
-          {enabled ? <Bell className="size-5" /> : <BellOff className="size-5 text-muted-foreground" />}
-          <span className="grid">
-            <span className="font-medium">Daily reminder on this device</span>
-            <span className="text-xs text-muted-foreground">Only when you have notes due.</span>
-          </span>
-        </span>
-        {busy ? <Loader2 className="size-5 animate-spin" /> : <Switch id="reminders" checked={enabled} onCheckedChange={toggle} />}
-      </label>
-
-      {enabled && (
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="grid gap-1.5">
-            <label htmlFor="reminder-time" className="text-sm text-muted-foreground">
-              Remind me at
-            </label>
-            <Input
-              id="reminder-time"
-              type="time"
-              step={900}
-              value={time}
-              onChange={async (e) => {
-                setTime(e.target.value)
-                if (/^\d\d:\d\d$/.test(e.target.value)) await setReminderTimeAction(e.target.value)
-              }}
-              className="h-10 w-36 font-mono"
-            />
-          </div>
-          <Button
-            variant="outline"
-            onClick={async () => {
-              const sent = await sendTestPushAction().catch(() => 0)
-              toast(sent ? "Test sent. It should pop up in a few seconds." : "No device got it. Turn the reminder off and on again.")
+    <>
+      <Row label="Reminder" sub={!enabled && "Only on days you have notes due."}>
+        {enabled && (
+          <input
+            type="time"
+            step={900}
+            value={time}
+            aria-label="Remind me at"
+            onChange={async (e) => {
+              setTime(e.target.value)
+              if (/^\d\d:\d\d$/.test(e.target.value)) await setReminderTimeAction(e.target.value)
             }}
-          >
-            <Send /> Send a test
-          </Button>
-        </div>
+            className="bg-transparent text-muted-foreground tabular-nums outline-none"
+          />
+        )}
+        {busy ? <Loader2 className="size-5 animate-spin text-muted-foreground" /> : <Switch checked={enabled} onCheckedChange={toggle} aria-label="Daily reminder" />}
+      </Row>
+      {enabled && (
+        <Row
+          label="Send a test reminder"
+          quiet
+          onClick={async () => {
+            const sent = await sendTestPushAction().catch(() => 0)
+            toast(sent ? "Test sent. It should pop up in a few seconds." : "No device got it. Turn the reminder off and on again.")
+          }}
+        />
       )}
-    </div>
+    </>
   )
 }

@@ -1,14 +1,13 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { Fragment, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Brain, FileText, Flame, Home, Layers, Plus, Settings, Sparkles, Swords } from "lucide-react"
+import { Command as CommandPrimitive } from "cmdk"
+import { Search } from "lucide-react"
 import { searchAction } from "@/actions/search"
 import { embedQuery, onEmbedderStatus, warmUp, type EmbedderStatus } from "@/lib/embedder"
-import { KIND_ICON } from "@/lib/icons"
-import type { NoteKind } from "@/db/schema"
 import type { SearchHit } from "@/server/search"
-import { Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { Command, CommandDialog, CommandList } from "@/components/ui/command"
 
 const OPEN_EVENT = "sb:open-search"
 
@@ -17,13 +16,25 @@ export function openSearch() {
 }
 
 const SHORTCUTS = [
-  { label: "Home", href: "/", icon: Home },
-  { label: "Start today's review", href: "/review", icon: Layers },
-  { label: "New note", href: "/new", icon: Plus },
-  { label: "Mock interview", href: "/mock", icon: Swords },
-  { label: "Weak spots", href: "/weak", icon: Flame },
-  { label: "Settings", href: "/settings", icon: Settings },
+  { label: "Home", href: "/" },
+  { label: "Start today's review", href: "/review" },
+  { label: "New note", href: "/new" },
+  { label: "Mock interview", href: "/?open=mock" },
+  { label: "Weak spots", href: "/?open=weak" },
+  { label: "Settings", href: "/settings" },
 ]
+
+const item =
+  "flex cursor-default items-center gap-3 rounded-[10px] px-3 py-2.5 text-base outline-none select-none data-selected:bg-accent sm:px-3.5"
+const heading = "block px-3 pt-3 pb-1 text-xs font-bold tracking-wider text-muted-foreground uppercase sm:px-3.5"
+
+/** The title with every typed word in bold. */
+function Marked({ text, query }: { text: string; query: string }) {
+  const words = query.split(/\s+/).filter(Boolean).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+  if (!words.length) return text
+  const parts = text.split(new RegExp(`(${words.join("|")})`, "gi"))
+  return parts.map((p, i) => (i % 2 ? <b key={i} className="font-extrabold">{p}</b> : <Fragment key={i}>{p}</Fragment>))
+}
 
 export function SearchPalette() {
   const router = useRouter()
@@ -81,6 +92,7 @@ export function SearchPalette() {
   // While typing, shortcuts whose name matches stay one Enter away ("mock", "new", "settings").
   const q = query.trim().toLowerCase()
   const actions = q ? SHORTCUTS.filter((s) => s.label.toLowerCase().split(/\s+/).some((w) => w.startsWith(q))) : SHORTCUTS
+  const notes = q ? hits : []
 
   function go(href: string) {
     setOpen(false)
@@ -89,58 +101,54 @@ export function SearchPalette() {
   }
 
   return (
-    <CommandDialog open={open} onOpenChange={setOpen} title="Search" description="Search everything you learned" className="sm:max-w-xl">
-      <Command shouldFilter={false} className="rounded-xl!">
-        <CommandInput placeholder="Search everything you learned…" value={query} onValueChange={(v) => {
-            setQuery(v)
-            setSearching(true)
-          }} />
-        <CommandList className="max-h-[min(60svh,26rem)]">
-          {actions.length > 0 && (
-            <CommandGroup heading="Go to">
-              {actions.map((s) => (
-                <CommandItem key={s.href} value={s.href} onSelect={() => go(s.href)}>
-                  <s.icon /> {s.label}
-                </CommandItem>
-              ))}
-            </CommandGroup>
+    <CommandDialog
+      open={open}
+      onOpenChange={setOpen}
+      title="Search"
+      description="Search everything you learned"
+      className="top-2.5 max-w-[calc(100%-1rem)] rounded-2xl! sm:top-16 sm:max-w-[580px]"
+    >
+      <Command shouldFilter={false} className="rounded-2xl! p-0">
+        <div className="flex items-center gap-3 border-b px-4 py-3 sm:px-5 sm:py-3.5">
+          <Search className="size-5 shrink-0 text-muted-foreground" />
+          <CommandPrimitive.Input
+            autoFocus
+            placeholder="Search your notes"
+            value={query}
+            onValueChange={(v) => {
+              setQuery(v)
+              setSearching(true)
+            }}
+            className="min-w-0 flex-1 bg-transparent text-lg outline-none placeholder:text-muted-foreground"
+          />
+          <kbd className="hidden rounded-[5px] border px-1.5 font-mono text-[0.7rem] text-muted-foreground sm:block">Esc</kbd>
+        </div>
+        <CommandList className="max-h-[min(60svh,26rem)] px-1 pt-1.5 pb-2 sm:px-1.5">
+          {notes.map((hit) => (
+            <CommandPrimitive.Item key={hit.id} value={hit.id} onSelect={() => go(`/n/${hit.id}`)} className={item}>
+              <span className="grid min-w-0 flex-1 gap-0.5 sm:flex sm:items-center sm:gap-3">
+                <span className="min-w-0 truncate sm:flex-1">
+                  <Marked text={hit.title} query={q} />
+                </span>
+                <span className="truncate text-sm text-muted-foreground sm:max-w-[45%] sm:shrink-0">
+                  {hit.sectionName} › {hit.topicName}
+                </span>
+              </span>
+            </CommandPrimitive.Item>
+          ))}
+          {q && !searching && !notes.length && (
+            <p className="px-4 py-6 text-center text-muted-foreground">Nothing found. Try other words, or describe the idea.</p>
           )}
-          {q && (
-            <>
-              {!searching && <CommandEmpty>Nothing found. Try other words, or describe the idea.</CommandEmpty>}
-              {hits.length > 0 && (
-                <CommandGroup heading="Notes">
-                  {hits.map((hit) => {
-                    const Icon = KIND_ICON[hit.kind as NoteKind] ?? FileText
-                    const onlyMeaning = hit.via.length === 1 && hit.via[0] === "meaning"
-                    return (
-                      <CommandItem key={hit.id} value={hit.id} onSelect={() => go(`/n/${hit.id}`)} className="py-2.5">
-                        <Icon />
-                        <span className="grid min-w-0 flex-1">
-                          <span className="truncate font-medium">{hit.title}</span>
-                          <span className="truncate text-xs text-muted-foreground">
-                            {hit.sectionName} › {hit.topicName}
-                          </span>
-                        </span>
-                        {onlyMeaning && (
-                          <span className="flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[0.65rem] text-muted-foreground">
-                            <Sparkles className="size-3" /> meaning
-                          </span>
-                        )}
-                      </CommandItem>
-                    )
-                  })}
-                </CommandGroup>
-              )}
-            </>
+          {actions.length > 0 && (
+            <CommandPrimitive.Group heading={<span className={heading}>Go to</span>}>
+              {actions.map((s) => (
+                <CommandPrimitive.Item key={s.href} value={s.href} onSelect={() => go(s.href)} className={item}>
+                  {s.label}
+                </CommandPrimitive.Item>
+              ))}
+            </CommandPrimitive.Group>
           )}
         </CommandList>
-        <div className="flex items-center gap-2 border-t px-3 py-2 text-[0.7rem] text-muted-foreground">
-          <Brain className="size-3.5" />
-          {model === "ready" && "Word + meaning search"}
-          {model === "loading" && "Word search ready · loading meaning search…"}
-          {(model === "idle" || model === "failed") && "Word search"}
-        </div>
       </Command>
     </CommandDialog>
   )

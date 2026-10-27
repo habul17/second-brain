@@ -6,27 +6,20 @@ import { AnimatePresence, motion } from "motion/react"
 import {
   ArrowLeft,
   ArrowRight,
-  Brain,
   Check,
-  Code2,
   ExternalLink,
   Eye,
   EyeOff,
-  Lightbulb,
-  Mic,
   PartyPopper,
   Pencil,
-  Radar,
   Square,
   Volume2,
-  type LucideIcon,
 } from "lucide-react"
 import { cn } from "cn"
 import { CodeBlock } from "@/components/code-block"
 import { Flashcards } from "@/components/flashcards"
 import { Markdown, speakable } from "@/components/markdown"
 import { Button } from "@/components/ui/button"
-import { Kbd } from "@/components/ui/kbd"
 import { Switch } from "@/components/ui/switch"
 import { celebrate } from "@/lib/celebrate"
 import { useSpeech } from "@/lib/speech"
@@ -34,11 +27,11 @@ import type { FullNote, Note } from "@/server/notes"
 
 type StepKey = "understand" | "code" | "say" | "test"
 
-const STEP_META: Record<StepKey, { label: string; icon: LucideIcon }> = {
-  understand: { label: "Understand", icon: Lightbulb },
-  code: { label: "Code", icon: Code2 },
-  say: { label: "Say it", icon: Mic },
-  test: { label: "Test", icon: Brain },
+const STEP_LABEL: Record<StepKey, string> = {
+  understand: "Understand",
+  code: "Code",
+  say: "Say it",
+  test: "Test",
 }
 
 interface Props {
@@ -77,11 +70,10 @@ export function NoteView({ full, nextReview }: Props) {
   const isLast = step === steps.length - 1
 
   return (
-    <div className="grid grid-cols-1 gap-10">
-      {/* Stepper: tabs fit their label on phone, equal widths from sm up */}
-      <nav aria-label="Steps" className="flex gap-2 rounded-2xl border bg-card p-2">
+    <div className="grid grid-cols-1 gap-[18px]">
+      {/* Stepper: four numbered segments; the numbers drop on a phone so the labels fit. */}
+      <nav aria-label="Steps" className="flex gap-1.5 rounded-xl border bg-card p-[5px]">
         {steps.map((s, i) => {
-          const { label, icon: Icon } = STEP_META[s]
           const active = i === step
           return (
             <button
@@ -90,20 +82,22 @@ export function NoteView({ full, nextReview }: Props) {
               onClick={() => goTo(i)}
               aria-current={active ? "step" : undefined}
               className={cn(
-                "relative flex min-w-0 flex-auto items-center justify-center gap-2 rounded-xl px-2 py-3 text-[0.8rem] font-medium transition-colors sm:flex-1 sm:text-sm",
-                active ? "text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                "relative flex h-[38px] min-w-0 flex-1 items-center justify-center rounded-lg px-1 text-[0.82rem] font-semibold whitespace-nowrap transition-colors sm:px-2 sm:text-[0.92rem]",
+                active ? "text-background" : "text-muted-foreground hover:bg-accent hover:text-foreground",
               )}
             >
               {active && (
                 <motion.span
                   layoutId="step-pill"
-                  className="absolute inset-0 rounded-xl bg-primary"
+                  className="absolute inset-0 rounded-lg bg-foreground"
                   transition={{ type: "spring", stiffness: 380, damping: 32 }}
                 />
               )}
               <span className="relative flex min-w-0 items-center gap-2">
-                {i < step ? <Check className="hidden size-4 sm:block" /> : <Icon className="hidden size-4 sm:block" />}
-                <span className="truncate">{label}</span>
+                <span className="hidden size-5 shrink-0 place-items-center rounded-full border-[1.5px] border-current text-[0.7rem] sm:grid">
+                  {i < step ? <Check className="size-3" strokeWidth={3} /> : i + 1}
+                </span>
+                <span className="truncate">{STEP_LABEL[s]}</span>
               </span>
             </button>
           )
@@ -111,7 +105,7 @@ export function NoteView({ full, nextReview }: Props) {
       </nav>
 
       {/* Step body */}
-      <div className="min-h-[22rem]">
+      <div className="min-h-[22rem] pt-2">
         <AnimatePresence mode="wait" custom={direction} initial={false}>
           <motion.section
             key={key}
@@ -120,7 +114,7 @@ export function NoteView({ full, nextReview }: Props) {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: direction * -28 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
-            className="grid min-w-0 grid-cols-1 gap-8"
+            className="grid min-w-0 grid-cols-1 gap-7"
           >
             {key === "understand" && <Understand note={note} linkMap={linkMap} />}
             {key === "code" && <CodeStep note={note} />}
@@ -157,20 +151,14 @@ export function NoteView({ full, nextReview }: Props) {
         </AnimatePresence>
       </div>
 
-      {/* Footer nav: sticks to the bottom so Next is always in reach on long notes. */}
-      <div className="sticky bottom-0 z-10 -mx-4 flex items-center justify-between gap-3 border-t bg-background/90 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:-mx-6 sm:px-6">
-        <Button variant="ghost" size="lg" onClick={() => goTo(step - 1)} disabled={step === 0}>
+      {/* Next bar: sticks to the bottom so Next is always in reach on long notes. */}
+      <div className="sticky bottom-0 z-10 flex items-center justify-between gap-3 border-t bg-background/90 pt-3 pb-[max(1.125rem,env(safe-area-inset-bottom))] backdrop-blur-md">
+        <Button variant="ghost" onClick={() => goTo(step - 1)} disabled={step === 0} className="px-2 text-muted-foreground">
           <ArrowLeft /> Back
         </Button>
-        <span className="hidden items-center gap-1.5 text-xs text-muted-foreground md:flex">
-          <Kbd>←</Kbd>
-          <Kbd>→</Kbd> to move
-        </span>
-        {isLast ? (
-          <span />
-        ) : (
-          <Button size="lg" className="h-11 px-5 text-base" onClick={() => goTo(step + 1)}>
-            Next: {STEP_META[steps[step + 1]].label} <ArrowRight />
+        {!isLast && (
+          <Button onClick={() => goTo(step + 1)}>
+            Next: {STEP_LABEL[steps[step + 1]]} <ArrowRight />
           </Button>
         )}
       </div>
@@ -180,9 +168,9 @@ export function NoteView({ full, nextReview }: Props) {
 
 function Empty({ noteId, what }: { noteId: string; what: string }) {
   return (
-    <div className="grid justify-items-center gap-4 rounded-3xl border border-dashed px-6 py-12 text-center text-muted-foreground">
+    <div className="flex flex-wrap items-center gap-3 text-muted-foreground">
       <p>{what}</p>
-      <Button asChild variant="outline">
+      <Button asChild variant="outline" size="sm">
         <Link href={`/n/${noteId}/edit`}>
           <Pencil /> Add it
         </Link>
@@ -191,45 +179,41 @@ function Empty({ noteId, what }: { noteId: string; what: string }) {
   )
 }
 
-function Label({ icon: Icon, children, className }: { icon: LucideIcon; children: string; className?: string }) {
-  return (
-    <div className={cn("mb-6 flex items-center gap-2 font-mono text-xs font-semibold tracking-wider text-muted-foreground uppercase", className)}>
-      <Icon className="size-3.5" /> {children}
-    </div>
-  )
+function Label({ children, className }: { children: string; className?: string }) {
+  return <div className={cn("mb-3 text-xs font-bold tracking-wider text-muted-foreground uppercase", className)}>{children}</div>
 }
 
 function Understand({ note, linkMap }: { note: Note; linkMap: Record<string, string> }) {
   return (
     <>
       {note.kind === "problem" && note.statement.trim() && (
-        <div className="min-w-0 rounded-3xl border bg-card p-5 sm:p-8">
-          <div className="mb-6 flex items-center justify-between gap-3">
-            <Label icon={Code2} className="mb-0">
-              Problem
-            </Label>
+        <div className="min-w-0">
+          <div className="flex items-center justify-between gap-3">
+            <Label>Problem</Label>
             {note.link && (
               <a
                 href={note.link}
                 target="_blank"
                 rel="noreferrer noopener"
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                className="mb-3 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
               >
                 Open original <ExternalLink className="size-3.5" />
               </a>
             )}
           </div>
-          <Markdown linkMap={linkMap}>{note.statement}</Markdown>
+          <Markdown linkMap={linkMap} className="max-w-[65ch]">
+            {note.statement}
+          </Markdown>
         </div>
       )}
 
       {note.kind === "pattern" && note.signals.length > 0 && (
-        <div className="min-w-0 rounded-3xl border-2 border-foreground bg-card p-5 sm:p-8">
-          <Label icon={Radar}>Reach for it when you see</Label>
-          <ul className="grid gap-3">
+        <div className="min-w-0">
+          <Label>Reach for it when you see</Label>
+          <ul className="grid max-w-[65ch] gap-2">
             {note.signals.map((s, i) => (
-              <li key={i} className="flex gap-3 text-base leading-relaxed sm:text-lg">
-                <span className="mt-2.5 size-2 shrink-0 rounded-full bg-foreground" />
+              <li key={i} className="flex gap-3 leading-relaxed">
+                <span className="mt-[0.7em] size-1.5 shrink-0 rounded-full bg-foreground" />
                 <span>
                   <Markdown inline>{s}</Markdown>
                 </span>
@@ -240,11 +224,9 @@ function Understand({ note, linkMap }: { note: Note; linkMap: Record<string, str
       )}
 
       {note.understand.trim() ? (
-        <div className="min-w-0 rounded-3xl border bg-card p-5 sm:p-10">
-          <Markdown linkMap={linkMap} className="text-base leading-[1.85] sm:text-[1.05rem]">
-            {note.understand}
-          </Markdown>
-        </div>
+        <Markdown linkMap={linkMap} className="max-w-[65ch] min-w-0">
+          {note.understand}
+        </Markdown>
       ) : (
         <Empty noteId={note.id} what="No explanation yet." />
       )}
@@ -317,26 +299,21 @@ function SayIt({ note, linkMap }: { note: Note; linkMap: Record<string, string> 
         </label>
       </div>
 
-      <div className="rounded-3xl border bg-card p-6 sm:p-10">
-        <Label icon={Mic}>Interview answer</Label>
-        <Markdown key={round} linkMap={linkMap} mode="marker" hideKeywords={practice} className="text-base leading-[1.95] sm:text-lg">
+      <div className="min-w-0">
+        <Markdown key={round} linkMap={linkMap} mode="marker" hideKeywords={practice} className="max-w-[65ch] leading-[1.9]">
           {note.sayIt}
         </Markdown>
-        {practice && (
-          <p className="mt-6 text-sm text-muted-foreground">Say the full answer out loud. Tap a blank only if you get stuck.</p>
-        )}
+        {practice && <p className="mt-5 text-sm text-muted-foreground">Say the full answer out loud. Tap a blank only if you get stuck.</p>}
       </div>
 
       {note.keyPoints.length > 0 && (
-        <div className="grid gap-4">
-          <div className="text-sm font-medium text-muted-foreground">Key points your answer must hit</div>
-          <ol className="grid gap-2.5">
+        <div className="min-w-0">
+          <Label>Key points your answer must hit</Label>
+          <ol className="grid max-w-[65ch]">
             {note.keyPoints.map((k, i) => (
-              <li key={i} className="flex items-start gap-3 rounded-xl border bg-card px-4 py-3">
-                <span className="grid size-6 shrink-0 place-items-center rounded-full bg-muted font-mono text-xs text-muted-foreground">
-                  {i + 1}
-                </span>
-                <span className="leading-relaxed">
+              <li key={i} className="flex items-baseline gap-3 border-b py-2.5 leading-relaxed last:border-b-0">
+                <span className="w-4 shrink-0 text-sm text-muted-foreground tabular-nums">{i + 1}</span>
+                <span>
                   <Markdown inline>{k}</Markdown>
                 </span>
               </li>

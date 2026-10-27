@@ -6,46 +6,52 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import { authClient } from "@/lib/auth-client"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 
 export interface Providers {
   google: boolean
   github: boolean
 }
 
-function Card({ title, subtitle, children }: { title: string; subtitle?: ReactNode; children: ReactNode }) {
+function Screen({ title, subtitle, children }: { title: string; subtitle?: ReactNode; children: ReactNode }) {
   return (
-    <div className="grid gap-6 rounded-3xl border bg-card p-6 sm:p-8">
-      <div className="grid gap-1.5">
-        <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
-        {subtitle && <p className="text-sm leading-relaxed text-muted-foreground">{subtitle}</p>}
+    <div className="grid gap-3.5">
+      <div className="mb-2.5 grid gap-2 text-center">
+        <h1 className="text-[1.6rem] font-bold tracking-tight">{title}</h1>
+        {subtitle && <p className="leading-relaxed text-muted-foreground">{subtitle}</p>}
       </div>
       {children}
     </div>
   )
 }
 
-function Field({ label, children, aside }: { label: string; children: ReactNode; aside?: ReactNode }) {
+/** A soft grey box with its name inside as the placeholder (and as its label for screen readers). */
+function Soft({ label, ...props }: { label: string } & React.ComponentProps<"input">) {
   return (
-    <div className="grid gap-2">
-      <div className="flex items-center justify-between">
-        <Label>{label}</Label>
-        {aside}
-      </div>
-      {children}
-    </div>
+    <input
+      aria-label={label}
+      placeholder={label}
+      className="h-12 w-full min-w-0 rounded-[11px] border border-transparent bg-accent px-3.5 text-base transition-colors outline-none placeholder:text-muted-foreground focus:border-foreground focus:bg-background"
+      {...props}
+    />
   )
 }
 
 function ErrorText({ children }: { children: ReactNode }) {
   if (!children) return null
   return (
-    <p role="alert" className="rounded-xl border border-foreground/30 bg-muted px-3 py-2.5 text-sm">
+    <p role="alert" className="text-center text-sm text-bad">
       {children}
     </p>
   )
 }
+
+/** The one line of links under a form. */
+function Links({ children }: { children: ReactNode }) {
+  return <div className="mt-1 flex flex-wrap justify-center gap-x-[22px] gap-y-2 text-[0.92rem] text-muted-foreground">{children}</div>
+}
+
+const strong = "font-semibold text-foreground underline-offset-4 hover:underline"
+const go = "mt-1 h-12 rounded-xl text-base"
 
 function useSubmit() {
   const [pending, setPending] = useState(false)
@@ -84,7 +90,7 @@ function SocialButtons({ providers }: { providers: Providers }) {
   const [busy, setBusy] = useState<string | null>(null)
   if (!providers.google && !providers.github) return null
 
-  async function go(provider: "google" | "github") {
+  async function signIn(provider: "google" | "github") {
     setBusy(provider)
     await authClient.signIn.social({ provider, callbackURL: "/" })
   }
@@ -93,18 +99,18 @@ function SocialButtons({ providers }: { providers: Providers }) {
     <>
       <div className="grid gap-2.5">
         {providers.google && (
-          <Button variant="outline" size="lg" className="h-11" onClick={() => go("google")} disabled={busy !== null}>
+          <Button variant="outline" size="lg" className="h-12 rounded-xl text-base" onClick={() => signIn("google")} disabled={busy !== null}>
             {busy === "google" ? <Loader2 className="animate-spin" /> : <GoogleIcon />} Continue with Google
           </Button>
         )}
         {providers.github && (
-          <Button variant="outline" size="lg" className="h-11" onClick={() => go("github")} disabled={busy !== null}>
+          <Button variant="outline" size="lg" className="h-12 rounded-xl text-base" onClick={() => signIn("github")} disabled={busy !== null}>
             {busy === "github" ? <Loader2 className="animate-spin" /> : <GitHubIcon />} Continue with GitHub
           </Button>
         )}
       </div>
       <div className="flex items-center gap-3 text-xs text-muted-foreground">
-        <span className="h-px flex-1 bg-border" /> or with email <span className="h-px flex-1 bg-border" />
+        <span className="h-px flex-1 bg-border" /> or <span className="h-px flex-1 bg-border" />
       </div>
     </>
   )
@@ -127,36 +133,27 @@ export function LoginForm({ providers, canReset }: { providers: Providers; canRe
   }
 
   return (
-    <Card title="Welcome back" subtitle="Log in to your second brain.">
+    <Screen title="Log in">
       <SocialButtons providers={providers} />
-      <form onSubmit={onSubmit} className="grid gap-4">
-        <Field label="Email">
-          <Input name="email" type="email" autoComplete="email" required className="h-11" />
-        </Field>
-        <Field
-          label="Password"
-          aside={
-            canReset && (
-              <Link href="/forgot-password" className="text-xs text-muted-foreground underline-offset-4 hover:underline">
-                Forgot password?
-              </Link>
-            )
-          }
-        >
-          <Input name="password" type="password" autoComplete="current-password" required className="h-11" />
-        </Field>
+      <form onSubmit={onSubmit} className="grid gap-3.5">
+        <Soft label="Email" name="email" type="email" autoComplete="email" required />
+        <Soft label="Password" name="password" type="password" autoComplete="current-password" required />
         <ErrorText>{error}</ErrorText>
-        <Button type="submit" size="lg" className="h-11 text-base" disabled={pending}>
+        <Button type="submit" size="lg" className={go} disabled={pending}>
           {pending && <Loader2 className="animate-spin" />} Log in
         </Button>
       </form>
-      <p className="text-center text-sm text-muted-foreground">
-        New here?{" "}
-        <Link href="/signup" className="font-medium text-foreground underline underline-offset-4">
-          Create your second brain
+      <Links>
+        {canReset && (
+          <Link href="/forgot-password" className="underline-offset-4 hover:text-foreground hover:underline">
+            Forgot password
+          </Link>
+        )}
+        <Link href="/signup" className={strong}>
+          Create account
         </Link>
-      </p>
-    </Card>
+      </Links>
+    </Screen>
   )
 }
 
@@ -182,31 +179,26 @@ export function SignupForm({ providers }: { providers: Providers }) {
   }
 
   return (
-    <Card title="Create your second brain" subtitle="Everything you learn, saved and reviewed so you never forget it.">
+    <Screen title="Create account">
       <SocialButtons providers={providers} />
-      <form onSubmit={onSubmit} className="grid gap-4">
-        <Field label="Name">
-          <Input name="name" autoComplete="name" required className="h-11" />
-        </Field>
-        <Field label="Email">
-          <Input name="email" type="email" autoComplete="email" required className="h-11" />
-        </Field>
-        <Field label="Password">
-          <Input name="password" type="password" autoComplete="new-password" minLength={8} required className="h-11" />
-        </Field>
-        <p className="-mt-1 text-xs text-muted-foreground">At least 8 characters.</p>
+      <form onSubmit={onSubmit} className="grid gap-3.5">
+        <Soft label="Name" name="name" autoComplete="name" required />
+        <Soft label="Email" name="email" type="email" autoComplete="email" required />
+        <Soft label="Password (8 or more characters)" name="password" type="password" autoComplete="new-password" minLength={8} required />
         <ErrorText>{error}</ErrorText>
-        <Button type="submit" size="lg" className="h-11 text-base" disabled={pending}>
+        <Button type="submit" size="lg" className={go} disabled={pending}>
           {pending && <Loader2 className="animate-spin" />} Create account
         </Button>
       </form>
-      <p className="text-center text-sm text-muted-foreground">
-        Already have one?{" "}
-        <Link href="/login" className="font-medium text-foreground underline underline-offset-4">
-          Log in
-        </Link>
-      </p>
-    </Card>
+      <Links>
+        <span>
+          Have an account?{" "}
+          <Link href="/login" className={strong}>
+            Log in
+          </Link>
+        </span>
+      </Links>
+    </Screen>
   )
 }
 
@@ -223,29 +215,31 @@ export function ForgotPasswordForm() {
 
   if (sent) {
     return (
-      <Card title="Check your inbox" subtitle="If that email has an account, a reset link is on its way. It works for 1 hour.">
-        <Link href="/login" className="text-center text-sm text-muted-foreground underline underline-offset-4">
-          Back to log in
-        </Link>
-      </Card>
+      <Screen title="Check your inbox" subtitle="If that email has an account, a reset link is on its way. It works for 1 hour.">
+        <Links>
+          <Link href="/login" className={strong}>
+            Back to log in
+          </Link>
+        </Links>
+      </Screen>
     )
   }
 
   return (
-    <Card title="Forgot your password?" subtitle="Enter your email and we'll send you a reset link.">
-      <form onSubmit={onSubmit} className="grid gap-4">
-        <Field label="Email">
-          <Input name="email" type="email" autoComplete="email" required className="h-11" />
-        </Field>
+    <Screen title="Reset password" subtitle="We'll email you a link to choose a new one.">
+      <form onSubmit={onSubmit} className="grid gap-3.5">
+        <Soft label="Email" name="email" type="email" autoComplete="email" required />
         <ErrorText>{error}</ErrorText>
-        <Button type="submit" size="lg" className="h-11 text-base" disabled={pending}>
+        <Button type="submit" size="lg" className={go} disabled={pending}>
           {pending && <Loader2 className="animate-spin" />} Send reset link
         </Button>
       </form>
-      <Link href="/login" className="text-center text-sm text-muted-foreground underline underline-offset-4">
-        Back to log in
-      </Link>
-    </Card>
+      <Links>
+        <Link href="/login" className={strong}>
+          Back to log in
+        </Link>
+      </Links>
+    </Screen>
   )
 }
 
@@ -264,25 +258,23 @@ export function ResetPasswordForm() {
 
   if (!token || params.get("error")) {
     return (
-      <Card title="This link has expired" subtitle="Reset links work for 1 hour. Ask for a new one.">
-        <Button asChild size="lg" className="h-11">
+      <Screen title="This link has expired" subtitle="Reset links work for 1 hour. Ask for a new one.">
+        <Button asChild size="lg" className={go}>
           <Link href="/forgot-password">Get a new link</Link>
         </Button>
-      </Card>
+      </Screen>
     )
   }
 
   return (
-    <Card title="Choose a new password">
-      <form onSubmit={onSubmit} className="grid gap-4">
-        <Field label="New password">
-          <Input name="password" type="password" autoComplete="new-password" minLength={8} required className="h-11" />
-        </Field>
+    <Screen title="Choose a new password">
+      <form onSubmit={onSubmit} className="grid gap-3.5">
+        <Soft label="New password (8 or more characters)" name="password" type="password" autoComplete="new-password" minLength={8} required />
         <ErrorText>{error}</ErrorText>
-        <Button type="submit" size="lg" className="h-11 text-base" disabled={pending}>
+        <Button type="submit" size="lg" className={go} disabled={pending}>
           {pending && <Loader2 className="animate-spin" />} Save password
         </Button>
       </form>
-    </Card>
+    </Screen>
   )
 }

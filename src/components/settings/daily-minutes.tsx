@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { cn } from "cn"
 import { toast } from "sonner"
 import { setDailyMinutesAction } from "@/actions/settings"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Row, quietTrigger } from "./row"
 
 const OPTIONS = [5, 10, 15, 20, 30]
 
@@ -12,28 +13,29 @@ export function DailyMinutes({ value }: { value: number }) {
   const [, startTransition] = useTransition()
 
   return (
-    <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Minutes of review per day">
-      {OPTIONS.map((m) => (
-        <button
-          key={m}
-          type="button"
-          role="radio"
-          aria-checked={minutes === m}
-          onClick={() => {
-            setMinutes(m)
-            startTransition(async () => {
-              await setDailyMinutesAction(m)
-              toast(`Daily review: about ${m} minutes`)
-            })
-          }}
-          className={cn(
-            "min-w-16 rounded-xl border px-4 py-2.5 font-mono text-sm tabular-nums transition-colors",
-            minutes === m ? "border-foreground bg-foreground text-background" : "text-muted-foreground hover:border-foreground/40 hover:text-foreground",
-          )}
-        >
-          {m} min
-        </button>
-      ))}
-    </div>
+    <Row label="Daily review">
+      <Select
+        value={String(minutes)}
+        onValueChange={(v) => {
+          const m = Number(v)
+          setMinutes(m)
+          startTransition(async () => {
+            await setDailyMinutesAction(m)
+            toast(`Daily review: about ${m} minutes`)
+          })
+        }}
+      >
+        <SelectTrigger aria-label="Minutes of review per day" className={quietTrigger}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent position="popper" align="end">
+          {OPTIONS.map((m) => (
+            <SelectItem key={m} value={String(m)}>
+              {m} min
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </Row>
   )
 }

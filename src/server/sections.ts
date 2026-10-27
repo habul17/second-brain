@@ -3,7 +3,7 @@ import { and, asc, count, eq, lte, max, sql } from "drizzle-orm"
 import { db } from "@/db"
 import { cards, notes, sections, settings, topics } from "@/db/schema"
 
-export const STARTER_SECTIONS = ["Web Dev", "DSA", "AI"]
+export const STARTER_SECTIONS = ["Dev", "DSA", "AI"]
 
 export async function createStarterSections(userId: string) {
   await db.insert(sections).values(STARTER_SECTIONS.map((name, position) => ({ userId, name, position })))

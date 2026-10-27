@@ -1,13 +1,15 @@
+import { Fragment } from "react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowUpRight, CalendarClock, ChevronRight, Code2, Link2, Puzzle } from "lucide-react"
+import { ChevronRight } from "lucide-react"
 import { z } from "zod"
 import { NoteMenu } from "@/components/note/note-menu"
+import { NoteShell, SidebarToggle } from "@/components/note/note-shell"
 import { NoteView } from "@/components/note/note-view"
-import { KIND_ICON, KIND_LABEL } from "@/lib/icons"
 import { getNote } from "@/server/notes"
+import { listSections } from "@/server/sections"
 import { requireUser } from "@/server/session"
-import { listAllTopics } from "@/server/topics"
+import { sectionTree } from "@/server/topics"
 
 async function load(noteId: string) {
   if (!z.uuid().safeParse(noteId).success) notFound()
@@ -32,88 +34,88 @@ function relativeDue(due: Date | undefined) {
   return `in ${months} month${months === 1 ? "" : "s"}`
 }
 
+const label = "mb-2 text-xs font-bold tracking-wider text-muted-foreground uppercase"
+
 export default async function NotePage({ params }: PageProps<"/n/[noteId]">) {
   const { user, full } = await load((await params).noteId)
-  const topics = await listAllTopics(user.id)
+  const [sections, tree] = await Promise.all([listSections(user.id), sectionTree(user.id)])
   const { note, section, topic, patterns, problems, backlinks } = full
-  const nextReview = relativeDue(full.card?.due)
-  const KindIcon = KIND_ICON[note.kind]
+  // Section › Topic › Subtopic. A phone drops the section: the ☰ drawer shows it.
+  const crumbs = [
+    { name: section.name, phone: false },
+    ...(topic.parent ? [{ name: topic.parent.name, phone: true }] : []),
+    { name: topic.name, phone: true },
+  ]
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl grid-cols-1 gap-10">
-      <header className="grid grid-cols-1 gap-4">
-        <div className="flex items-center justify-between gap-3">
-          <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1 text-sm text-muted-foreground">
-            <Link href={`/s/${section.id}`} className="truncate hover:text-foreground">
-              {section.name}
-            </Link>
-            <ChevronRight className="size-3.5 shrink-0" />
-            <Link href={`/s/${section.id}#t-${topic.id}`} className="truncate hover:text-foreground">
-              {topic.name}
-            </Link>
+    <NoteShell sections={sections.map((s) => ({ id: s.id, name: s.name }))} topics={tree} sectionId={section.id} noteId={note.id}>
+      <div className="mx-auto grid w-full max-w-[760px] grid-cols-[minmax(0,1fr)] content-start gap-[18px] px-4 pt-5 sm:px-8 sm:pt-[22px]">
+        <div className="flex items-center gap-2">
+          <SidebarToggle />
+          <nav aria-label="Breadcrumb" className="flex min-w-0 flex-1 items-center gap-1 text-[0.9rem] text-muted-foreground">
+            {crumbs.map((c, i) => (
+              <Fragment key={i}>
+                {i > 0 && <ChevronRight className={c.phone && crumbs[i - 1].phone ? "size-3.5 shrink-0" : "size-3.5 shrink-0 max-sm:hidden"} />}
+                <Link href={`/s/${section.id}`} className={c.phone ? "truncate hover:text-foreground" : "truncate hover:text-foreground max-sm:hidden"}>
+                  {c.name}
+                </Link>
+              </Fragment>
+            ))}
           </nav>
-          <NoteMenu note={note} sectionId={section.id} topics={topics} />
+          <NoteMenu note={note} />
         </div>
-        <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">{note.title}</h1>
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          {note.kind !== "concept" && (
-            <span className="flex items-center gap-1.5 rounded-md border px-2 py-1 font-medium text-foreground">
-              <KindIcon className="size-3.5" /> {KIND_LABEL[note.kind]}
-            </span>
-          )}
-          {note.difficulty && <span className="rounded-md border px-2 py-1 capitalize">{note.difficulty}</span>}
-          {patterns.map((p) => (
-            <Link key={p.id} href={`/n/${p.id}`} className="flex items-center gap-1.5 rounded-md border px-2 py-1 hover:text-foreground">
-              <Puzzle className="size-3.5" /> {p.title}
-            </Link>
-          ))}
-          <span className="flex items-center gap-1.5 px-1 py-1">
-            <CalendarClock className="size-3.5" /> Next review {nextReview}
-          </span>
-        </div>
-      </header>
 
-      <NoteView full={full} nextReview={nextReview} />
+        <h1 className="text-2xl leading-[1.15] font-bold tracking-tight text-balance sm:text-[2rem]">{note.title}</h1>
+        {(note.difficulty || patterns.length > 0) && (
+          <p className="-mt-2 flex flex-wrap gap-x-1.5 text-[0.92rem] text-muted-foreground">
+            {note.difficulty && <span className="capitalize">{note.difficulty}</span>}
+            {patterns.map((p, i) => (
+              <Fragment key={p.id}>
+                {(i > 0 || note.difficulty) && <span aria-hidden>·</span>}
+                <Link href={`/n/${p.id}`} className="underline-offset-4 hover:text-foreground hover:underline">
+                  {p.title}
+                </Link>
+              </Fragment>
+            ))}
+          </p>
+        )}
 
-      {(problems.length > 0 || backlinks.length > 0) && (
-        <aside className="grid gap-8 rounded-3xl border bg-card p-5 sm:p-8">
-          {problems.length > 0 && (
-            <div className="grid gap-3">
-              <h2 className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <Code2 className="size-4" /> Problems that use this pattern
-              </h2>
-              <ul className="grid gap-1">
-                {problems.map((p) => (
-                  <li key={p.id}>
-                    <Link href={`/n/${p.id}`} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-muted">
-                      <span className="min-w-0 flex-1 truncate">{p.title}</span>
-                      {p.difficulty && <span className="text-xs text-muted-foreground capitalize">{p.difficulty}</span>}
-                      <ArrowUpRight className="size-4 shrink-0 text-muted-foreground" />
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {backlinks.length > 0 && (
-            <div className="grid gap-3">
-              <h2 className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <Link2 className="size-4" /> Notes that link here
-              </h2>
-              <ul className="grid gap-1">
-                {backlinks.map((b) => (
-                  <li key={b.id}>
-                    <Link href={`/n/${b.id}`} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-muted">
-                      <span className="min-w-0 flex-1 truncate">{b.title}</span>
-                      <ArrowUpRight className="size-4 shrink-0 text-muted-foreground" />
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </aside>
-      )}
-    </div>
+        <NoteView full={full} nextReview={relativeDue(full.card?.due)} />
+
+        {(problems.length > 0 || backlinks.length > 0) && (
+          <aside className="grid gap-6 pb-10">
+            {problems.length > 0 && (
+              <div>
+                <h2 className={label}>Problems that use this pattern</h2>
+                <ul>
+                  {problems.map((p) => (
+                    <li key={p.id} className="border-b last:border-b-0">
+                      <Link href={`/n/${p.id}`} className="flex items-center gap-3 py-2.5 hover:underline">
+                        <span className="min-w-0 flex-1 truncate">{p.title}</span>
+                        {p.difficulty && <span className="text-sm text-muted-foreground capitalize">{p.difficulty}</span>}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {backlinks.length > 0 && (
+              <div>
+                <h2 className={label}>Notes that link here</h2>
+                <ul>
+                  {backlinks.map((b) => (
+                    <li key={b.id} className="border-b last:border-b-0">
+                      <Link href={`/n/${b.id}`} className="block truncate py-2.5 hover:underline">
+                        {b.title}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </aside>
+        )}
+      </div>
+    </NoteShell>
   )
 }

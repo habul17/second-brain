@@ -1,15 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowDown, ArrowUp, Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react"
 import {
   createTopicAction,
   deleteSectionAction,
-  deleteTopicAction,
   renameSectionAction,
-  renameTopicAction,
   reorderSectionsAction,
 } from "@/actions/library"
 import { NameDialog } from "@/components/name-dialog"
@@ -106,7 +103,7 @@ export function SectionMenu({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="icon-lg" aria-label="Section options">
+          <Button variant="outline" size="icon" aria-label="Section options">
             <MoreHorizontal />
           </Button>
         </DropdownMenuTrigger>
@@ -162,76 +159,24 @@ export function NewTopicButton({ sectionId, size = "default" }: { sectionId: str
   return (
     <NameDialog
       title="New topic"
-      description="A topic groups related notes, like React hooks or Two pointers."
-      placeholder="React hooks"
+      description="A topic groups related notes, like React or Two pointers. It can hold subtopics too."
+      placeholder="React"
       submitLabel="Create topic"
       onSubmit={async (name) => {
         await createTopicAction(sectionId, name)
         router.refresh()
       }}
       trigger={
-        <Button size={size} className={size === "lg" ? "h-11 px-5 text-base" : undefined}>
-          <Plus /> New topic
-        </Button>
+        size === "lg" ? (
+          <Button size="lg" className="h-11 px-5 text-base">
+            <Plus /> New topic
+          </Button>
+        ) : (
+          <Button variant="outline" aria-label="New topic">
+            <Plus /> <span className="max-sm:hidden">New topic</span>
+          </Button>
+        )
       }
     />
-  )
-}
-
-export function TopicMenu({ topic, noteCount }: { topic: { id: string; name: string }; noteCount: number }) {
-  const router = useRouter()
-  const [renaming, setRenaming] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-
-  return (
-    <div className="flex items-center gap-1">
-      <Button asChild variant="ghost" size="sm">
-        <Link href={`/new?topic=${topic.id}`}>
-          <Plus /> Note
-        </Link>
-      </Button>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon-sm" aria-label={`${topic.name} options`}>
-            <MoreHorizontal />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuItem onSelect={() => setRenaming(true)}>
-            <Pencil /> Rename topic
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(true)}>
-            <Trash2 /> Delete topic
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      <NameDialog
-        open={renaming}
-        onOpenChange={setRenaming}
-        title="Rename topic"
-        initial={topic.name}
-        submitLabel="Save"
-        onSubmit={async (name) => {
-          await renameTopicAction(topic.id, name)
-          router.refresh()
-        }}
-      />
-      <ConfirmDelete
-        open={deleting}
-        onOpenChange={setDeleting}
-        title={`Delete "${topic.name}"?`}
-        description={
-          noteCount > 0
-            ? `This deletes ${plural(noteCount, "note")} inside it, with their review history. You can't undo this.`
-            : "This topic is empty. You can't undo this."
-        }
-        onConfirm={async () => {
-          await deleteTopicAction(topic.id)
-          router.refresh()
-        }}
-      />
-    </div>
   )
 }

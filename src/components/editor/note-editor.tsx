@@ -3,35 +3,32 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { motion } from "motion/react"
-import { Brain, Code2, FileText, Lightbulb, Loader2, Mic, Plus, Puzzle, Save, X, type LucideIcon } from "lucide-react"
+import { Check, Loader2, Trash2, X } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "cn"
-import { saveNoteAction } from "@/actions/library"
+import { deleteNoteAction, moveNoteAction, saveNoteAction } from "@/actions/library"
+import { ConfirmDelete } from "@/components/section-actions"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Kbd } from "@/components/ui/kbd"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { backfill } from "@/lib/embedder"
-import { KIND_ICON } from "@/lib/icons"
 import type { NoteInput } from "@/lib/note-input"
 import type { TopicOption } from "@/server/topics"
-import { CodeInput, CppInput, Field, ListInput, QAList } from "./fields"
+import { AddButton, CodeInput, CppInput, Field, ListInput, QAList } from "./fields"
 import { RichEditor } from "./rich-editor"
 
 type Tab = "understand" | "code" | "say" | "test"
 
-const TABS: { key: Tab; label: string; icon: LucideIcon }[] = [
-  { key: "understand", label: "Understand", icon: Lightbulb },
-  { key: "code", label: "Code", icon: Code2 },
-  { key: "say", label: "Say it", icon: Mic },
-  { key: "test", label: "Test", icon: Brain },
+const TABS: { key: Tab; label: string }[] = [
+  { key: "understand", label: "Understand" },
+  { key: "code", label: "Code" },
+  { key: "say", label: "Say it" },
+  { key: "test", label: "Test" },
 ]
 
 const KINDS = [
-  { key: "concept", label: "Concept", hint: "Any idea" },
-  { key: "pattern", label: "Pattern", hint: "DSA technique" },
-  { key: "problem", label: "Problem", hint: "DSA question" },
+  { key: "concept", label: "Concept" },
+  { key: "pattern", label: "Pattern" },
+  { key: "problem", label: "Problem" },
 ] as const
 
 export const EMPTY_NOTE: NoteInput = {
@@ -58,17 +55,10 @@ export const EMPTY_NOTE: NoteInput = {
 interface Props {
   initial: NoteInput
   noteId?: string
-  /** Where a new note goes. Editing keeps the note where it is (use "Move to…" on the note). */
+  /** The note's topic. Changing it moves the note (or, for a new note, picks where it goes). */
   topicId?: string
   topics: TopicOption[]
   patternTitles: string[]
-}
-
-function filled(input: NoteInput, tab: Tab) {
-  if (tab === "understand") return input.understand.trim() !== "" || input.statement.trim() !== ""
-  if (tab === "code") return input.code.length > 0 || input.solution.trim() !== ""
-  if (tab === "say") return input.sayIt.trim() !== ""
-  return input.questions.length > 0
 }
 
 /** Drops blank rows the user added but never filled. */
@@ -89,21 +79,46 @@ function clean(input: NoteInput): NoteInput {
   }
 }
 
+type Saved = { id: string; missingPatterns: string[] }
+
+// A quiet picker: grey text and a chevron, no box.
+const quiet = "h-auto! w-auto max-w-full gap-1.5 border-0 bg-transparent! px-2 py-1.5 text-[0.92rem] text-muted-foreground shadow-none hover:text-foreground focus-visible:ring-0 dark:bg-transparent!"
+const bareInput = "h-10 min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground/60"
+
+/**
+ * The focus writer: title, the 4 step tabs and the text, nothing else.
+ * An existing note saves by itself as you type; Done (or X) closes it. A new note is added with Done.
+ */
 export function NoteEditor({ initial, noteId, topicId: initialTopic, topics, patternTitles }: Props) {
   const router = useRouter()
   const draftKey = `sb:draft:${noteId ?? `new:${initialTopic ?? ""}`}`
   const [input, setInput] = useState<NoteInput>(initial)
   const [topicId, setTopicId] = useState(initialTopic ?? "")
   const [tab, setTab] = useState<Tab>("understand")
-  const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [savedJson, setSavedJson] = useState(() => JSON.stringify(clean(initial)))
+  const [deleting, setDeleting] = useState(false)
   // Bumped when a draft is restored, to remount the (uncontrolled) rich editors with the restored text.
   const [version, setVersion] = useState(0)
   const dirty = useRef(false)
+  const inputRef = useRef(input)
+  const savedRef = useRef(savedJson)
+  // Saves run one after another, so a slow one never overwrites a newer one.
+  const queue = useRef<Promise<unknown>>(Promise.resolve())
+  useEffect(() => {
+    inputRef.current = input
+  })
 
   const set = <K extends keyof NoteInput>(key: K, value: NoteInput[K]) => {
     dirty.current = true
     setInput((prev) => ({ ...prev, [key]: value }))
+  }
+
+  function forgetDraft() {
+    try {
+      localStorage.removeItem(draftKey)
+    } catch {}
   }
 
   // Offer back any unsaved draft from last time (e.g. the tab was closed by accident).
@@ -127,9 +142,7 @@ export function NoteEditor({ initial, noteId, topicId: initialTopic, topics, pat
             setInput(initial)
             setVersion((v) => v + 1)
             dirty.current = false
-            try {
-              localStorage.removeItem(draftKey)
-            } catch {}
+            forgetDraft()
           },
         },
       })
@@ -138,7 +151,7 @@ export function NoteEditor({ initial, noteId, topicId: initialTopic, topics, pat
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Keep a draft while typing.
+  // Keep a draft while typing, in case the save can't reach the server.
   useEffect(() => {
     if (!dirty.current) return
     const timer = setTimeout(() => {
@@ -149,7 +162,7 @@ export function NoteEditor({ initial, noteId, topicId: initialTopic, topics, pat
     return () => clearTimeout(timer)
   }, [input, draftKey])
 
-  // Warn before leaving with unsaved changes.
+  // Warn before leaving with changes that aren't saved yet.
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
       if (dirty.current) e.preventDefault()
@@ -158,59 +171,98 @@ export function NoteEditor({ initial, noteId, topicId: initialTopic, topics, pat
     return () => window.removeEventListener("beforeunload", onBeforeUnload)
   }, [])
 
-  async function save() {
-    if (saving) return
-    const data = clean(input)
+  async function saveNow(): Promise<Saved | null> {
+    const data = clean(inputRef.current)
+    const json = JSON.stringify(data)
+    if (noteId && json === savedRef.current) return { id: noteId, missingPatterns: [] }
     if (!data.title) {
       setError("Give the note a title.")
-      document.getElementById("note-title")?.focus()
-      return
+      return null
     }
     if (!noteId && !topicId) {
       setError("Pick a topic for the note.")
-      return
+      return null
     }
     setSaving(true)
-    setError(null)
     try {
       const res = await saveNoteAction(data, noteId ? { noteId } : { topicId })
       if (!res.ok) {
         setError(res.error)
-        return
+        return null
       }
-      dirty.current = false
-      try {
-        localStorage.removeItem(draftKey)
-      } catch {}
-      if (res.missingPatterns.length) {
-        toast(`Saved. No pattern note called "${res.missingPatterns.join('", "')}" yet. It links once you create it.`)
-      } else {
-        toast(noteId ? "Saved" : "Note added. It comes up for review tomorrow.")
+      setError(null)
+      savedRef.current = json
+      setSavedJson(json)
+      if (JSON.stringify(clean(inputRef.current)) === json) {
+        dirty.current = false
+        forgetDraft()
       }
-      void backfill()
-      router.push(`/n/${res.id}`)
+      return { id: res.id, missingPatterns: res.missingPatterns }
     } catch {
-      setError("Couldn't save. Check your connection and try again.")
+      setError("Couldn't save. Check your connection.")
+      return null
     } finally {
       setSaving(false)
     }
   }
 
-  // Ctrl/Cmd + S saves from anywhere on the page.
-  const saveRef = useRef(save)
+  function save() {
+    const next = queue.current.then(saveNow)
+    queue.current = next.catch(() => {})
+    return next
+  }
+
+  // An existing note saves itself a moment after you stop typing.
   useEffect(() => {
-    saveRef.current = save
+    if (!noteId || !dirty.current) return
+    const timer = setTimeout(() => void save(), 1200)
+    return () => clearTimeout(timer)
+    // save() reads the latest input through a ref.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input, noteId])
+
+  async function done() {
+    const res = await save()
+    if (!res) {
+      document.getElementById("note-title")?.focus()
+      return
+    }
+    void backfill()
+    if (res.missingPatterns.length) toast(`No pattern note called "${res.missingPatterns.join('", "')}" yet. It links once you create it.`)
+    else if (!noteId) toast("Note added. It comes up for review tomorrow.")
+    router.push(`/n/${res.id}`)
+  }
+
+  // Ctrl/Cmd + S saves (or adds) from anywhere on the page.
+  const doneRef = useRef(done)
+  useEffect(() => {
+    doneRef.current = done
   })
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
         e.preventDefault()
-        void saveRef.current()
+        void (noteId ? save() : doneRef.current())
       }
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noteId])
+
+  async function pickTopic(id: string) {
+    const previous = topicId
+    setTopicId(id)
+    if (!noteId) return
+    try {
+      await moveNoteAction(noteId, id)
+      const to = topics.find((t) => t.id === id)
+      toast(`Moved to ${to?.sectionName} › ${to?.path}`)
+    } catch {
+      setTopicId(previous)
+      toast("Couldn't move the note. Check your connection.")
+    }
+  }
 
   const groups = Object.values(
     topics.reduce<Record<string, { name: string; topics: TopicOption[] }>>((acc, t) => {
@@ -218,160 +270,193 @@ export function NoteEditor({ initial, noteId, topicId: initialTopic, topics, pat
       return acc
     }, {}),
   )
+  const topic = topics.find((t) => t.id === topicId)
   const isProblem = input.kind === "problem"
-  const cancelHref = noteId ? `/n/${noteId}` : topicId ? `/s/${topics.find((t) => t.id === topicId)?.sectionId ?? ""}` : "/"
+  const pending = noteId !== undefined && JSON.stringify(clean(input)) !== savedJson
+  const cancelHref = topic ? `/s/${topic.sectionId}` : "/"
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-8">
-      {/* Top: where it goes, and its title */}
-      <div className="grid gap-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="font-mono text-xs tracking-wider text-muted-foreground uppercase">{noteId ? "Edit note" : "New note"}</span>
-          {!noteId && (
-            <Select value={topicId} onValueChange={setTopicId}>
-              <SelectTrigger className="h-9 w-full sm:w-72" aria-label="Topic">
-                <SelectValue placeholder="Pick a topic…" />
-              </SelectTrigger>
-              <SelectContent>
-                {groups.map((g) => (
-                  <SelectGroup key={g.name}>
-                    <SelectLabel>{g.name}</SelectLabel>
-                    {g.topics.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.name}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
+    // data-focus hides the app's top bar; data-full lets the writer set its own spacing.
+    <div data-focus data-full className="mx-auto grid w-full max-w-[740px] grid-cols-[minmax(0,1fr)] content-start gap-4 px-4 pt-3 pb-24 sm:gap-[18px] sm:px-7 sm:pt-[18px]">
+      <div className="flex min-w-0 items-center gap-1 sm:gap-2">
+        {noteId ? (
+          <Button variant="ghost" size="icon" aria-label="Close" onClick={done}>
+            <X />
+          </Button>
+        ) : (
+          <Button asChild variant="ghost" size="icon" aria-label="Cancel">
+            <Link
+              href={cancelHref}
+              onClick={() => {
+                dirty.current = false
+                forgetDraft()
+              }}
+            >
+              <X />
+            </Link>
+          </Button>
+        )}
+        <Select value={topicId} onValueChange={pickTopic}>
+          <SelectTrigger aria-label="Topic" className={cn(quiet, "min-w-0")}>
+            <span className="truncate">{topic ? `${topic.sectionName} › ${topic.path}` : "Pick a topic"}</span>
+          </SelectTrigger>
+          <SelectContent>
+            {groups.map((g) => (
+              <SelectGroup key={g.name}>
+                <SelectLabel>{g.name}</SelectLabel>
+                {g.topics.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.path}
+                  </SelectItem>
                 ))}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
-        <input
-          id="note-title"
-          value={input.title}
-          onChange={(e) => set("title", e.target.value)}
-          placeholder="Title, e.g. How JWT auth works"
-          maxLength={160}
-          autoFocus={!noteId}
-          className="w-full bg-transparent text-3xl font-semibold tracking-tight outline-none placeholder:text-muted-foreground/60 sm:text-4xl"
-        />
-        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Kind of note">
-          {KINDS.map((k) => {
-            const Icon = KIND_ICON[k.key]
-            const on = input.kind === k.key
-            return (
-              <button
-                key={k.key}
-                type="button"
-                role="radio"
-                aria-checked={on}
-                onClick={() => set("kind", k.key)}
-                className={cn(
-                  "flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-colors",
-                  on ? "border-foreground bg-foreground text-background" : "text-muted-foreground hover:border-foreground/40 hover:text-foreground",
-                )}
-              >
-                <Icon className="size-4" />
-                <span className="font-medium">{k.label}</span>
-                <span className={cn("hidden text-xs sm:inline", on ? "text-background/60" : "text-muted-foreground")}>{k.hint}</span>
-              </button>
-            )
-          })}
-        </div>
+              </SelectGroup>
+            ))}
+          </SelectContent>
+        </Select>
+        <span className="flex-1" />
+        {noteId && (
+          <span aria-live="polite" className={cn("flex shrink-0 items-center gap-1.5 text-[0.88rem] whitespace-nowrap text-muted-foreground", error && "text-bad")}>
+            {error ? (
+              "Not saved"
+            ) : saving || pending ? (
+              <>
+                <Loader2 className="size-3.5 animate-spin" /> <span className="max-sm:sr-only">Saving…</span>
+              </>
+            ) : (
+              <>
+                <Check className="size-3.5 text-good" /> <span className="max-sm:sr-only">Saved</span>
+              </>
+            )}
+          </span>
+        )}
+        {noteId && (
+          <Button variant="ghost" size="icon" aria-label="Delete note" className="text-muted-foreground" onClick={() => setDeleting(true)}>
+            <Trash2 />
+          </Button>
+        )}
+        <Button onClick={done} className="shrink-0">
+          {noteId ? "Done" : "Add note"}
+        </Button>
       </div>
 
-      {/* Tabs, same look as the note's steps */}
-      <nav aria-label="Parts of the note" className="sticky top-[4.5rem] z-20 flex gap-2 rounded-2xl border bg-card/95 p-2 backdrop-blur">
-        {TABS.map((t) => {
-          const active = t.key === tab
-          return (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setTab(t.key)}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "relative flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl px-1 py-2.5 text-[0.8rem] font-medium transition-colors sm:text-sm",
-                active ? "text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground",
-              )}
-            >
-              {active && (
-                <motion.span layoutId="editor-tab" className="absolute inset-0 rounded-xl bg-primary" transition={{ type: "spring", stiffness: 380, damping: 32 }} />
-              )}
-              <span className="relative flex items-center gap-2">
-                <t.icon className="hidden size-4 sm:block" />
-                <span className="truncate">{t.label}</span>
-                {filled(input, t.key) && <span className={cn("size-1.5 rounded-full", active ? "bg-primary-foreground" : "bg-foreground")} />}
-              </span>
-            </button>
-          )
-        })}
+      {error && (
+        <p role="alert" className="-mt-1 text-sm text-bad">
+          {error}
+        </p>
+      )}
+
+      <input
+        id="note-title"
+        value={input.title}
+        onChange={(e) => set("title", e.target.value)}
+        placeholder="Title"
+        aria-label="Title"
+        maxLength={160}
+        autoFocus={!noteId}
+        className="w-full bg-transparent text-2xl leading-[1.15] font-bold tracking-tight outline-none placeholder:text-muted-foreground/50 sm:text-[2rem]"
+      />
+      <Select value={input.kind} onValueChange={(v) => set("kind", v as NoteInput["kind"])}>
+        <SelectTrigger aria-label="Kind of note" className={cn(quiet, "-mt-2.5 -ml-2 justify-self-start")}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {KINDS.map((k) => (
+            <SelectItem key={k.key} value={k.key}>
+              {k.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <nav aria-label="Parts of the note" className="flex gap-4 border-b sm:gap-6">
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setTab(t.key)}
+            aria-current={t.key === tab ? "page" : undefined}
+            className={cn(
+              "py-2.5 text-[0.92rem] font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground sm:text-base",
+              t.key === tab && "text-foreground shadow-[inset_0_-2px_0_var(--foreground)]",
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
       </nav>
 
-      <div key={version} className="grid gap-10">
+      <div key={version} className="grid grid-cols-[minmax(0,1fr)] gap-8 pt-1">
         {/* Understand */}
-        <div className={cn("grid gap-10", tab !== "understand" && "hidden")}>
+        <div className={cn("grid grid-cols-[minmax(0,1fr)] gap-8", tab !== "understand" && "hidden")}>
           {isProblem && (
-            <>
-              <Field label="Problem statement" hint="The full question with examples and constraints. In review you only see this.">
-                <RichEditor value={input.statement} onChange={(v) => set("statement", v)} placeholder="Given an array of integers nums and an integer target…" aria-label="Problem statement" />
-              </Field>
-              <div className="grid gap-6 sm:grid-cols-2">
-                <Field label="Difficulty">
-                  <Select value={input.difficulty ?? "none"} onValueChange={(v) => set("difficulty", v === "none" ? null : (v as NoteInput["difficulty"]))}>
-                    <SelectTrigger className="h-10 w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Not set</SelectItem>
-                      <SelectItem value="easy">Easy</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="hard">Hard</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </Field>
-                <Field label="Link">
-                  <Input value={input.link ?? ""} onChange={(e) => set("link", e.target.value)} placeholder="https://leetcode.com/problems/…" className="h-10" />
-                </Field>
-              </div>
-              <Field label="Patterns it uses" hint="Tap a pattern you already have, or type a new name.">
-                <PatternPicker value={input.patterns} options={patternTitles} onChange={(v) => set("patterns", v)} />
-              </Field>
-            </>
+            <RichEditor
+              bare
+              value={input.statement}
+              onChange={(v) => set("statement", v)}
+              placeholder="The problem: the question, examples and constraints. In review you only see this."
+              aria-label="Problem statement"
+            />
           )}
-          {input.kind === "pattern" && (
-            <Field label="Signals" hint='Words in a problem that should make you think of this pattern, e.g. "longest substring without…".'>
-              <ListInput value={input.signals} onChange={(v) => set("signals", v)} placeholder="contiguous subarray with a condition" addLabel="Add signal" />
+          <RichEditor
+            bare
+            value={input.understand}
+            onChange={(v) => set("understand", v)}
+            placeholder={isProblem ? "How to think about it. Type / for a heading, list, code or diagram" : "Type / for a heading, list, code or diagram"}
+            aria-label="Explanation"
+            className={cn(isProblem && "border-t pt-5")}
+          />
+          {isProblem && (
+            <Field label="Details">
+              <div className="grid grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1">
+                <span className="text-muted-foreground">Difficulty</span>
+                <Select value={input.difficulty ?? "none"} onValueChange={(v) => set("difficulty", v === "none" ? null : (v as NoteInput["difficulty"]))}>
+                  <SelectTrigger aria-label="Difficulty" className={cn(quiet, "-ml-2 justify-self-start text-base text-foreground")}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Not set</SelectItem>
+                    <SelectItem value="easy">Easy</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="hard">Hard</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="text-muted-foreground">Link</span>
+                <input value={input.link ?? ""} onChange={(e) => set("link", e.target.value)} placeholder="https://leetcode.com/problems/…" aria-label="Link" className={bareInput} />
+              </div>
             </Field>
           )}
-          <Field
-            label={isProblem ? "How to think about it" : "Explanation"}
-            hint="Everything you need to fully get it in one read: analogy, steps, tables, diagrams. Link notes with [[Note title]]."
-          >
-            <RichEditor value={input.understand} onChange={(v) => set("understand", v)} aria-label="Explanation" />
-          </Field>
+          {isProblem && (
+            <Field label="Patterns it uses">
+              <PatternPicker value={input.patterns} options={patternTitles} onChange={(v) => set("patterns", v)} />
+            </Field>
+          )}
+          {input.kind === "pattern" && (
+            <Field label="Signals">
+              <ListInput value={input.signals} onChange={(v) => set("signals", v)} placeholder='Words in a problem that point here, e.g. "longest substring"' addLabel="Add signal" />
+            </Field>
+          )}
         </div>
 
         {/* Code */}
-        <div className={cn("grid gap-10", tab !== "code" && "hidden")}>
+        <div className={cn("grid grid-cols-[minmax(0,1fr)] gap-8", tab !== "code" && "hidden")}>
           {isProblem && (
-            <Field label="Solution (C++)" hint="The full accepted solution. Shown side by side with yours after you practice.">
-              <CppInput value={input.solution} onChange={(v) => set("solution", v)} placeholder={"class Solution {\npublic:\n  …\n};"} aria-label="Solution" minHeight="14rem" />
+            <Field label="Solution (C++)" className="border-t-0 pt-0">
+              <CppInput value={input.solution} onChange={(v) => set("solution", v)} placeholder={"class Solution {\npublic:\n  …\n};"} aria-label="Solution" minHeight="14rem" bare />
             </Field>
           )}
-          <Field label={isProblem ? "Extra snippets" : "Code"} hint="Short snippets worth typing out yourself, each with one line per important part.">
-            <div className="grid gap-6">
+          <Field label={isProblem ? "Extra snippets" : "Snippets"} className={cn(!isProblem && "border-t-0 pt-0")}>
+            <div className="grid grid-cols-[minmax(0,1fr)]">
               {input.code.map((snippet, i) => (
-                <div key={i} className="grid gap-3 rounded-2xl border bg-muted/30 p-3 sm:p-4">
+                <div key={i} className="group grid gap-2 border-b pb-6 [&+&]:pt-5">
                   <div className="flex items-center gap-2">
-                    <Input
+                    <input
                       value={snippet.file}
                       onChange={(e) => set("code", input.code.map((c, j) => (j === i ? { ...c, file: e.target.value } : c)))}
-                      placeholder="file name, e.g. middleware.ts"
-                      className="h-9 bg-card font-mono text-xs!"
+                      placeholder="File name, e.g. middleware.ts"
+                      aria-label="File name"
+                      className={cn(bareInput, "font-mono text-sm")}
                     />
-                    <Button type="button" variant="ghost" size="icon" aria-label="Remove snippet" onClick={() => set("code", input.code.filter((_, j) => j !== i))}>
+                    <Button type="button" variant="ghost" size="icon-sm" aria-label="Remove snippet" className="text-muted-foreground" onClick={() => set("code", input.code.filter((_, j) => j !== i))}>
                       <X />
                     </Button>
                   </div>
@@ -384,72 +469,54 @@ export function NoteEditor({ initial, noteId, topicId: initialTopic, topics, pat
                   />
                 </div>
               ))}
-              <Button type="button" variant="outline" size="sm" className="w-fit" onClick={() => set("code", [...input.code, { file: "", code: "", notes: [] }])}>
-                <Plus /> Add snippet
-              </Button>
+              <AddButton onClick={() => set("code", [...input.code, { file: "", code: "", notes: [] }])}>Add snippet</AddButton>
             </div>
           </Field>
           {isProblem && <RunSetup input={input} set={set} />}
         </div>
 
         {/* Say it */}
-        <div className={cn("grid gap-10", tab !== "say" && "hidden")}>
-          <Field
-            label="Interview answer"
-            hint={
+        <div className={cn("grid grid-cols-[minmax(0,1fr)] gap-8", tab !== "say" && "hidden")}>
+          <RichEditor
+            bare
+            value={input.sayIt}
+            onChange={(v) => set("sayIt", v)}
+            placeholder={
               isProblem
-                ? "What you say out loud: clarify → brute force → optimal → code → dry run → complexity → edge cases. Bold the words interviewers listen for."
-                : "What you say out loud, strong enough to impress a FAANG interviewer. Bold (Ctrl B) the words interviewers listen for."
+                ? "What you say out loud: clarify, brute force, optimal, complexity, edge cases. Bold (Ctrl B) the words interviewers listen for."
+                : "What you say out loud in the interview. Bold (Ctrl B) the words interviewers listen for."
             }
-          >
-            <RichEditor value={input.sayIt} onChange={(v) => set("sayIt", v)} aria-label="Interview answer" />
-          </Field>
-          <Field label="Key points" hint="3 to 7 short points your spoken answer must hit. Review checks your answer against these.">
-            <ListInput value={input.keyPoints} onChange={(v) => set("keyPoints", v)} placeholder="Stateless: server keeps no session" addLabel="Add key point" />
+            aria-label="Interview answer"
+          />
+          <Field label="Key points">
+            <ListInput value={input.keyPoints} onChange={(v) => set("keyPoints", v)} placeholder="A point your answer must hit" addLabel="Add key point" />
           </Field>
         </div>
 
         {/* Test */}
-        <div className={cn("grid gap-10", tab !== "test" && "hidden")}>
-          <Field label="Questions" hint="3 or 4 questions on this idea, each from a different angle. Review picks a different one each time.">
-            <QAList value={input.questions} onChange={(v) => set("questions", v)} addLabel="Add question" questionPlaceholder="What problem does a JWT solve?" />
+        <div className={cn("grid grid-cols-[minmax(0,1fr)] gap-8", tab !== "test" && "hidden")}>
+          <Field label="Questions" className="border-t-0 pt-0">
+            <QAList value={input.questions} onChange={(v) => set("questions", v)} addLabel="Add question" questionPlaceholder="A question on this idea" />
           </Field>
-          <Field label="Interviewer follow-ups" hint='"Why not X?", "What if…?", "How would it scale?"'>
-            <QAList value={input.followUps} onChange={(v) => set("followUps", v)} addLabel="Add follow-up" questionPlaceholder="How do you log a user out with JWTs?" />
+          <Field label="Follow-ups">
+            <QAList value={input.followUps} onChange={(v) => set("followUps", v)} addLabel="Add follow-up" questionPlaceholder='"Why not X?", "What if…?"' />
           </Field>
         </div>
       </div>
 
-      {/* Save bar */}
-      <div className="sticky bottom-0 z-20 -mx-4 flex items-center gap-3 border-t bg-background/90 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
-        {error ? (
-          <p role="alert" className="min-w-0 flex-1 text-sm font-medium">
-            {error}
-          </p>
-        ) : (
-          <span className="hidden min-w-0 flex-1 items-center gap-1.5 text-xs text-muted-foreground sm:flex">
-            <Kbd>/</Kbd> blocks · <Kbd>Ctrl S</Kbd> save
-          </span>
-        )}
-        <div className="ml-auto flex shrink-0 items-center gap-2">
-          <Button asChild variant="ghost">
-            <Link
-              href={cancelHref}
-              onClick={() => {
-                dirty.current = false
-                try {
-                  localStorage.removeItem(draftKey)
-                } catch {}
-              }}
-            >
-              Cancel
-            </Link>
-          </Button>
-          <Button onClick={save} disabled={saving} className="px-5">
-            {saving ? <Loader2 className="animate-spin" /> : <Save />} {noteId ? "Save" : "Add note"}
-          </Button>
-        </div>
-      </div>
+      {noteId && (
+        <ConfirmDelete
+          open={deleting}
+          onOpenChange={setDeleting}
+          title={`Delete "${input.title || initial.title}"?`}
+          description="The note and its review history are gone for good. Links to it from other notes will show as missing."
+          onConfirm={() => {
+            dirty.current = false
+            forgetDraft()
+            return deleteNoteAction(noteId, topic?.sectionId ?? "")
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -466,28 +533,30 @@ function PatternPicker({ value, options, onChange }: { value: string[]; options:
   }
 
   return (
-    <div className="grid gap-3">
-      <div className="flex flex-wrap gap-2">
-        {[...options, ...extra].map((t) => {
-          const on = has(t)
-          return (
-            <button
-              key={t}
-              type="button"
-              aria-pressed={on}
-              onClick={() => onChange(on ? value.filter((v) => v.toLowerCase() !== t.toLowerCase()) : [...value, t])}
-              className={cn(
-                "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm transition-colors",
-                on ? "border-foreground bg-foreground text-background" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Puzzle className="size-3.5" /> {t}
-            </button>
-          )
-        })}
-      </div>
-      <div className="flex gap-2">
-        <Input
+    <div className="grid gap-2">
+      {options.length + extra.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {[...options, ...extra].map((t) => {
+            const on = has(t)
+            return (
+              <button
+                key={t}
+                type="button"
+                aria-pressed={on}
+                onClick={() => onChange(on ? value.filter((v) => v.toLowerCase() !== t.toLowerCase()) : [...value, t])}
+                className={cn(
+                  "rounded-lg border px-2.5 py-1 text-[0.92rem] transition-colors",
+                  on ? "border-foreground bg-foreground text-background" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {t}
+              </button>
+            )
+          })}
+        </div>
+      )}
+      <div className="flex items-center gap-2 border-b">
+        <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
@@ -497,35 +566,34 @@ function PatternPicker({ value, options, onChange }: { value: string[]; options:
             }
           }}
           placeholder="New pattern name, e.g. Sliding Window"
-          className="h-9"
+          aria-label="New pattern name"
+          className={bareInput}
         />
-        <Button type="button" variant="outline" onClick={add} disabled={!draft.trim()}>
-          <Plus /> Add
-        </Button>
+        {draft.trim() && (
+          <Button type="button" variant="ghost" size="sm" onClick={add}>
+            Add
+          </Button>
+        )}
       </div>
     </div>
   )
 }
 
 function RunSetup({ input, set }: { input: NoteInput; set: <K extends keyof NoteInput>(key: K, value: NoteInput[K]) => void }) {
+  const sub = "text-sm font-semibold"
   return (
-    <div className="grid gap-8 rounded-3xl border border-dashed p-4 sm:p-6">
-      <div className="grid gap-1">
-        <span className="flex items-center gap-2 font-semibold">
-          <FileText className="size-4" /> Practice setup
-        </span>
-        <span className="text-xs leading-relaxed text-muted-foreground">
-          Lets review run your C++ against tests. Claude fills this in for you; you rarely need to touch it.
-        </span>
-      </div>
-      <Field label="Starter code" hint="What you start from in review, e.g. the empty class Solution.">
-        <CppInput value={input.starterCode} onChange={(v) => set("starterCode", v)} aria-label="Starter code" />
-      </Field>
-      <Field label="Test runner (main)" hint="C++ main() added after your code. Reads one test from input, prints the answer.">
-        <CppInput value={input.harness} onChange={(v) => set("harness", v)} aria-label="Test runner" />
-      </Field>
-      <Field label="Test cases" hint="Input given to the program, and the exact output expected.">
-        <div className="grid gap-3">
+    <Field label="Practice setup" hint="Lets review run your C++ against tests. Claude fills this in; you rarely need to touch it.">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
+        <div className="grid gap-2">
+          <span className={sub}>Starter code</span>
+          <CppInput value={input.starterCode} onChange={(v) => set("starterCode", v)} aria-label="Starter code" bare />
+        </div>
+        <div className="grid gap-2">
+          <span className={sub}>Test runner (main)</span>
+          <CppInput value={input.harness} onChange={(v) => set("harness", v)} aria-label="Test runner" bare />
+        </div>
+        <div className="grid gap-2">
+          <span className={sub}>Test cases</span>
           {input.testCases.map((t, i) => (
             <div key={i} className="grid grid-cols-[1fr_1fr_auto] items-start gap-2">
               <CodeInput
@@ -542,27 +610,28 @@ function RunSetup({ input, set }: { input: NoteInput; set: <K extends keyof Note
                 className="min-h-16"
                 aria-label={`Test ${i + 1} expected output`}
               />
-              <Button type="button" variant="ghost" size="icon" aria-label="Remove test" onClick={() => set("testCases", input.testCases.filter((_, j) => j !== i))}>
+              <Button type="button" variant="ghost" size="icon" aria-label="Remove test" className="text-muted-foreground" onClick={() => set("testCases", input.testCases.filter((_, j) => j !== i))}>
                 <X />
               </Button>
             </div>
           ))}
-          <Button type="button" variant="outline" size="sm" className="w-fit" onClick={() => set("testCases", [...input.testCases, { input: "", expected: "" }])}>
-            <Plus /> Add test
-          </Button>
+          <AddButton onClick={() => set("testCases", [...input.testCases, { input: "", expected: "" }])}>Add test</AddButton>
         </div>
-      </Field>
-      <Field label="Time limit (minutes)" hint="How long you get to code it in review.">
-        <Input
-          type="number"
-          min={1}
-          max={120}
-          value={input.timeLimitMin ?? ""}
-          onChange={(e) => set("timeLimitMin", e.target.value ? Math.min(120, Math.max(1, Number(e.target.value))) : null)}
-          placeholder="20"
-          className="h-10 w-32"
-        />
-      </Field>
-    </div>
+        <div className="flex items-center gap-3">
+          <span className={sub}>Time limit</span>
+          <input
+            type="number"
+            min={1}
+            max={120}
+            value={input.timeLimitMin ?? ""}
+            onChange={(e) => set("timeLimitMin", e.target.value ? Math.min(120, Math.max(1, Number(e.target.value))) : null)}
+            placeholder="20"
+            aria-label="Time limit in minutes"
+            className="h-9 w-16 border-b bg-transparent text-center outline-none"
+          />
+          <span className="text-muted-foreground">minutes</span>
+        </div>
+      </div>
+    </Field>
   )
 }

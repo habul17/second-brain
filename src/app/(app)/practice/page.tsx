@@ -14,5 +14,5 @@ export default async function PracticePage({ searchParams }: PageProps<"/practic
   if (!ids.length) redirect("/")
   const session = await buildSession(user.id, { noteIds: ids })
   if (!session.items.length) redirect("/")
-  return <ReviewSession key={ids.join()} session={session} mode="practice" title="Practice" />
+  return <ReviewSession key={ids.join()} session={session} mode="practice" />
 }

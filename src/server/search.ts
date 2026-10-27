@@ -63,7 +63,7 @@ export async function searchNotes(userId: string, q: string, embedding?: number[
       from (select * from words union all select * from typo union all select * from meaning) hits
       group by id
     )
-    select n.id, n.title, n.kind, t.name as "topicName", s.name as "sectionName", f.via, f.score
+    select n.id, n.title, n.kind, coalesce((select p.name || ' › ' from topics p where p.id = t.parent_id), '') || t.name as "topicName", s.name as "sectionName", f.via, f.score
     from fused f
     join notes n on n.id = f.id
     join topics t on t.id = n.topic_id

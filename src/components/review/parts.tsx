@@ -1,33 +1,59 @@
 "use client"
 
 import { useEffect, type ReactNode } from "react"
-import { motion } from "motion/react"
-import { Check, Mic, MicOff, Square } from "lucide-react"
+import { highlight } from "sugar-high"
+import { Check, Mic, MicOff, Square, X } from "lucide-react"
 import { cn } from "cn"
-import { Button } from "@/components/ui/button"
-import { Kbd } from "@/components/ui/kbd"
 import type { useSpeechRecognition } from "@/lib/speech-recognition"
 
 type Voice = ReturnType<typeof useSpeechRecognition>
 
-export const RATINGS = [
-  { value: 1, label: "Forgot", hint: "Didn't get it" },
-  { value: 2, label: "Shaky", hint: "Got some of it" },
-  { value: 3, label: "Nailed it", hint: "Could say it in an interview" },
+const RATINGS = [
+  { value: 1, label: "Forgot" },
+  { value: 2, label: "Shaky" },
+  { value: 3, label: "Nailed it" },
 ] as const
 
 /** Each rating's signal colour: a dot always, a tinted fill when it's the suggested one. */
 const TONE = {
   1: { dot: "bg-bad", on: "border-bad bg-bad/10 ring-1 ring-bad" },
-  2: { dot: "bg-okay", on: "border-okay bg-okay/15 ring-1 ring-okay" },
+  2: { dot: "bg-okay", on: "border-okay bg-okay/10 ring-1 ring-okay" },
   3: { dot: "bg-good", on: "border-good bg-good/10 ring-1 ring-good" },
 } as const
 
 function days(n: number) {
-  return n <= 1 ? "tomorrow" : n < 30 ? `in ${n} days` : `in ${Math.round(n / 30)} mo`
+  return n <= 1 ? "tomorrow" : n < 30 ? `in ${n} days` : `in ${Math.round(n / 30)} months`
 }
 
-/** Forgot / Shaky / Nailed it, each showing when the note comes back. Keys 1, 2, 3. */
+/** The page under the progress bar: just the words, centred. Problems go wide on a laptop. */
+export function Stage({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
+  return (
+    <div className={cn("mx-auto grid w-full grid-cols-[minmax(0,1fr)] content-start gap-7 px-4 pt-7 pb-10 sm:px-7", wide ? "max-w-[1120px]" : "max-w-[660px]")}>
+      {children}
+    </div>
+  )
+}
+
+/** The one thing to do next, pinned to the bottom of the screen. */
+export function Dock({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <div className={cn("sticky bottom-0 z-10 border-t bg-background px-4 pt-3.5 pb-[max(1.125rem,env(safe-area-inset-bottom))] sm:px-7", className)}>
+      <div className="mx-auto grid w-full max-w-[664px] gap-2">{children}</div>
+    </div>
+  )
+}
+
+export function Heading({ children, sub, over }: { children: ReactNode; sub?: ReactNode; over?: ReactNode }) {
+  return (
+    <div className="grid gap-2">
+      {over && <p className="-mb-1 text-[0.9rem] text-muted-foreground">{over}</p>}
+      <h1 className="text-[1.4rem] leading-tight font-bold tracking-tight text-balance sm:text-[1.6rem]">{children}</h1>
+      {sub && <p className="text-muted-foreground">{sub}</p>}
+    </div>
+  )
+}
+
+/** Forgot / Shaky / Nailed it. Keys 1, 2, 3; Enter takes the suggested one. */
 export function RatingButtons({
   preview,
   suggested,
@@ -51,91 +77,45 @@ export function RatingButtons({
   }, [onRate, suggested, disabled])
 
   return (
-    <div className="grid gap-3">
-      <div className="text-sm font-medium text-muted-foreground">
-        How did it go?{suggested && " Suggested: the outlined one. Change it if it's wrong."}
-      </div>
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
-        {RATINGS.map((r) => {
-          const on = suggested === r.value
-          return (
-            <button
-              key={r.value}
-              type="button"
-              disabled={disabled}
-              onClick={() => onRate(r.value)}
-              className={cn(
-                "grid gap-1 rounded-2xl border px-2 py-3.5 text-center transition-colors disabled:opacity-50 sm:px-4 sm:py-4",
-                on ? TONE[r.value].on : "bg-card hover:border-foreground/50",
-              )}
-            >
-              <span className="flex items-center justify-center gap-2 text-sm font-semibold sm:text-base">
-                <span className={cn("size-2 shrink-0 rounded-full", TONE[r.value].dot)} />
-                {r.label}
-                <Kbd className="hidden sm:inline-flex">{r.value}</Kbd>
-              </span>
-              <span className="text-xs text-muted-foreground">{days(preview[r.value])}</span>
-            </button>
-          )
-        })}
-      </div>
+    <div className="grid grid-cols-3 gap-2">
+      {RATINGS.map((r) => (
+        <button
+          key={r.value}
+          type="button"
+          disabled={disabled}
+          title={`Comes back ${days(preview[r.value])}`}
+          onClick={() => onRate(r.value)}
+          className={cn(
+            "flex h-[60px] flex-col items-center justify-center gap-[3px] rounded-xl border text-[0.9rem] font-bold whitespace-nowrap transition-colors disabled:opacity-50 sm:h-[52px] sm:flex-row sm:gap-2 sm:text-[0.98rem]",
+            suggested === r.value ? TONE[r.value].on : "hover:bg-accent",
+          )}
+        >
+          <span className={cn("size-2.5 shrink-0 rounded-full", TONE[r.value].dot)} />
+          {r.label}
+        </button>
+      ))}
     </div>
   )
 }
 
-/** The mic button, what you said so far, and how many points you've hit (without giving them away). */
-export function VoicePanel({ voice, matched }: { voice: Voice; matched: boolean[] }) {
-  const hits = matched.filter(Boolean).length
-
-  if (!voice.supported) {
-    return (
-      <p className="rounded-2xl border border-dashed p-4 text-sm leading-relaxed text-muted-foreground">
-        Say your answer out loud, then show the answer and tick what you covered. (Voice check works in Chrome, Edge and Safari.)
-      </p>
-    )
-  }
-
+/** One round mic button. What you said shows quietly under it. */
+export function MicButton({ voice }: { voice: Voice }) {
+  if (!voice.supported) return null
   return (
-    <div className="grid gap-4 rounded-2xl border bg-card p-4 sm:p-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        {voice.listening ? (
-          <Button variant="outline" size="lg" onClick={voice.stop}>
-            <Square /> Stop
-          </Button>
-        ) : (
-          <Button size="lg" className="h-11 px-5" onClick={voice.start}>
-            <Mic /> {voice.transcript ? "Keep talking" : "Start answering"}
-          </Button>
-        )}
-        {matched.length > 0 && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground" aria-live="polite">
-            <span className="flex gap-1">
-              {matched.map((m, i) => (
-                <motion.span
-                  key={i}
-                  className={cn("size-2.5 rounded-full", m ? "bg-foreground" : "bg-muted-foreground/25")}
-                  animate={m ? { scale: [1, 1.5, 1] } : {}}
-                />
-              ))}
-            </span>
-            <span className="tabular-nums">
-              {hits} of {matched.length} points
-            </span>
-          </div>
-        )}
-      </div>
-      {voice.listening && !voice.transcript && (
-        <p className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span className="relative flex size-2.5">
-            <span className="absolute inline-flex size-full animate-ping rounded-full bg-foreground/60" />
-            <span className="relative inline-flex size-2.5 rounded-full bg-foreground" />
-          </span>
-          Listening… start talking.
-        </p>
-      )}
-      {voice.transcript && <p className="max-h-40 overflow-y-auto text-sm leading-relaxed text-muted-foreground">{voice.transcript}</p>}
+    <div className="grid justify-items-center gap-2.5 pt-9 pb-3 text-muted-foreground">
+      <button
+        type="button"
+        onClick={voice.listening ? voice.stop : voice.start}
+        aria-label={voice.listening ? "Stop" : "Talk"}
+        className="relative grid size-16 place-items-center rounded-full bg-foreground text-background transition-transform active:scale-95"
+      >
+        {voice.listening && <span className="absolute inset-0 animate-ping rounded-full bg-foreground/30" />}
+        {voice.listening ? <Square className="size-5" /> : <Mic className="size-6" />}
+      </button>
+      <span aria-live="polite">{voice.listening ? "Listening… tap to stop" : voice.transcript ? "Tap to keep talking" : "Tap to talk"}</span>
+      {voice.transcript && <p className="max-h-40 w-full overflow-y-auto pt-2 leading-relaxed">{voice.transcript}</p>}
       {voice.error && (
-        <p className="flex items-center gap-2 text-sm">
+        <p className="flex items-center gap-2 text-foreground">
           <MicOff className="size-4" /> {voice.error}
         </p>
       )}
@@ -143,30 +123,27 @@ export function VoicePanel({ voice, matched }: { voice: Voice; matched: boolean[
   )
 }
 
-/** Key points with tick boxes: auto-ticked by voice, and you can fix them by tapping. */
-export function Checklist({ items, ticked, onToggle }: { items: string[]; ticked: boolean[]; onToggle: (i: number) => void }) {
+/** The points an answer should hit. Voice ticks them; tap to fix. */
+export function Ticks({ items, ticked, onToggle }: { items: string[]; ticked: boolean[]; onToggle: (i: number) => void }) {
   return (
-    <ul className="grid gap-2">
+    <ul className="grid gap-1 border-t pt-3.5">
       {items.map((item, i) => (
         <li key={i}>
           <button
             type="button"
             onClick={() => onToggle(i)}
             aria-pressed={ticked[i]}
-            className={cn(
-              "flex w-full items-start gap-3 rounded-xl border px-4 py-3 text-left transition-colors",
-              ticked[i] ? "border-foreground bg-card" : "border-dashed text-muted-foreground hover:border-foreground/40",
-            )}
+            className={cn("flex w-full items-start gap-3 py-1.5 text-left leading-relaxed", !ticked[i] && "text-muted-foreground")}
           >
             <span
               className={cn(
-                "mt-0.5 grid size-5 shrink-0 place-items-center rounded-md border",
-                ticked[i] ? "border-foreground bg-foreground text-background" : "border-muted-foreground/50",
+                "mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border-[1.5px]",
+                ticked[i] ? "border-good bg-good text-white" : "border-border",
               )}
             >
-              {ticked[i] && <Check className="size-3.5" />}
+              {ticked[i] && <Check className="size-3" strokeWidth={3} />}
             </span>
-            <span className="leading-relaxed">{item.replace(/\*\*/g, "")}</span>
+            {item.replace(/\*\*/g, "")}
           </button>
         </li>
       ))}
@@ -174,11 +151,53 @@ export function Checklist({ items, ticked, onToggle }: { items: string[]; ticked
   )
 }
 
-export function PromptCard({ label, children, dark = false }: { label: string; children: ReactNode; dark?: boolean }) {
+/** A small round mark: green tick or red cross. */
+export function Mark({ ok }: { ok: boolean }) {
   return (
-    <div className={cn("grid gap-5 rounded-3xl border p-6 sm:p-9", dark ? "border-foreground bg-foreground text-background" : "bg-card")}>
-      <span className={cn("font-mono text-xs font-semibold tracking-wider uppercase", dark ? "text-background/60" : "text-muted-foreground")}>{label}</span>
-      {children}
+    <span className={cn("grid size-[18px] shrink-0 place-items-center rounded-full text-white", ok ? "bg-good" : "bg-bad")}>
+      {ok ? <Check className="size-[11px]" strokeWidth={3} /> : <X className="size-[11px]" strokeWidth={3} />}
+    </span>
+  )
+}
+
+/** Two-way switch, used on a phone to flip between the problem and your work. */
+export function Seg<T extends string>({
+  options,
+  value,
+  onChange,
+  className,
+}: {
+  options: { value: T; label: string }[]
+  value: T
+  onChange: (value: T) => void
+  className?: string
+}) {
+  return (
+    <div role="tablist" className={cn("grid grid-cols-2 gap-1 rounded-[11px] bg-accent p-1", className)}>
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          role="tab"
+          aria-selected={value === o.value}
+          onClick={() => onChange(o.value)}
+          className={cn(
+            "rounded-lg px-4 py-[7px] text-[0.92rem] font-semibold text-muted-foreground transition-colors",
+            value === o.value && "bg-background text-foreground shadow-[0_1px_2px_rgb(0_0_0/0.08)]",
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
     </div>
+  )
+}
+
+/** Read-only code with line numbers and no box around it. */
+export function PlainCode({ code }: { code: string }) {
+  return (
+    <pre className="code-block code-lines overflow-x-auto font-mono text-[0.78rem] leading-[1.75] sm:text-[0.84rem]">
+      <code dangerouslySetInnerHTML={{ __html: highlight(code) }} />
+    </pre>
   )
 }

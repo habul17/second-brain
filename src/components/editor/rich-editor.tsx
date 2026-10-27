@@ -18,6 +18,8 @@ interface Props {
   placeholder?: string
   /** Smaller, for answers and short fields. */
   compact?: boolean
+  /** No box around it: just the words (the focus writer). */
+  bare?: boolean
   className?: string
   "aria-label"?: string
 }
@@ -31,7 +33,7 @@ function unescapeWikiLinks(markdown: string) {
  * A Notion-style editor that reads and writes Markdown.
  * "/" opens the block menu; Markdown shortcuts (#, -, 1., >, ```, **bold**) work as you type.
  */
-export function RichEditor({ value, onChange, placeholder, compact = false, className, ...rest }: Props) {
+export function RichEditor({ value, onChange, placeholder, compact = false, bare = false, className, ...rest }: Props) {
   // The editor is created once, so it calls the latest onChange through a ref.
   const onChangeRef = useRef(onChange)
   useEffect(() => {
@@ -76,7 +78,7 @@ export function RichEditor({ value, onChange, placeholder, compact = false, clas
   return (
     <div
       className={cn(
-        "rounded-2xl border bg-card px-4 py-3 transition-colors focus-within:border-foreground/40 sm:px-5 sm:py-4",
+        !bare && "rounded-2xl border bg-card px-4 py-3 transition-colors focus-within:border-foreground/40 sm:px-5 sm:py-4",
         className,
       )}
       onClick={(e) => {

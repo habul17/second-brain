@@ -2,6 +2,7 @@ import "server-only"
 import { and, count, desc, eq, gt, lte, sql } from "drizzle-orm"
 import { db } from "@/db"
 import { cards, notes, reviews, sections, topics } from "@/db/schema"
+import { topicPath } from "@/server/topic-path"
 
 /** A weak spot: reviewed, and forgotten more than once or FSRS rates it hard to remember. */
 export const isWeak = sql<boolean>`(${cards.reps} > 0 and (${cards.lapses} >= 2 or ${cards.difficulty} >= 7))`
@@ -70,7 +71,7 @@ export async function weakSpots(userId: string, limit = 20) {
       id: notes.id,
       title: notes.title,
       kind: notes.kind,
-      topicName: topics.name,
+      topicName: topicPath,
       sectionName: sections.name,
       lapses: cards.lapses,
       difficulty: cards.difficulty,

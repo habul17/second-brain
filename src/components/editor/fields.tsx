@@ -5,22 +5,46 @@ import dynamic from "next/dynamic"
 import { Plus, X } from "lucide-react"
 import { cn } from "cn"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { RichEditor } from "./rich-editor"
 
 const CppEditor = dynamic(() => import("./cpp-editor"), { ssr: false })
 
-/** A labelled block in the editor with an optional one-line hint. */
+/** A part of the editor: a hairline, a small label, then the input. */
 export function Field({ label, hint, children, className }: { label: string; hint?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <div className={cn("grid gap-2.5", className)}>
-      <div className="grid gap-0.5">
-        <span className="text-sm font-semibold">{label}</span>
-        {hint && <span className="text-xs leading-relaxed text-muted-foreground">{hint}</span>}
+    <section className={cn("grid gap-3 border-t pt-5", className)}>
+      <div className="grid gap-1">
+        <h3 className="text-xs font-bold tracking-wider text-muted-foreground uppercase">{label}</h3>
+        {hint && <p className="text-sm text-muted-foreground">{hint}</p>}
       </div>
       {children}
-    </div>
+    </section>
+  )
+}
+
+/** "+ Add …" as quiet text, under a list. */
+export function AddButton({ children, onClick }: { children: ReactNode; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="flex h-10 w-fit items-center gap-2 text-muted-foreground transition-colors hover:text-foreground">
+      <Plus className="size-4" /> {children}
+    </button>
+  )
+}
+
+/** A remove button that shows on hover (always on touch screens). */
+function RemoveButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon-sm"
+      aria-label={label}
+      onClick={onClick}
+      className="shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
+    >
+      <X />
+    </Button>
   )
 }
 
@@ -55,34 +79,28 @@ export function ListInput({
   }
 
   return (
-    <div ref={list} className="grid gap-2">
+    <div ref={list} className="grid">
       {value.map((item, i) => (
-        <div key={i} className="flex items-center gap-2">
-          <span className="w-5 shrink-0 text-right font-mono text-xs text-muted-foreground">{i + 1}</span>
-          <Input
+        <div key={i} className="group flex items-center gap-3 border-b py-0.5">
+          <span className="w-4 shrink-0 text-right text-sm text-muted-foreground tabular-nums">{i + 1}</span>
+          <input
             value={item}
             placeholder={placeholder}
             onChange={(e) => onChange(value.map((v, j) => (j === i ? e.target.value : v)))}
             onKeyDown={(e) => onKey(e, i)}
-            className="h-10"
+            className="h-10 min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground/60"
           />
-          <Button type="button" variant="ghost" size="icon" aria-label="Remove" onClick={() => onChange(value.filter((_, j) => j !== i))}>
-            <X />
-          </Button>
+          <RemoveButton label="Remove" onClick={() => onChange(value.filter((_, j) => j !== i))} />
         </div>
       ))}
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="w-fit"
+      <AddButton
         onClick={() => {
           onChange([...value, ""])
           focusAt(value.length)
         }}
       >
-        <Plus /> {addLabel}
-      </Button>
+        {addLabel}
+      </AddButton>
     </div>
   )
 }
@@ -108,25 +126,25 @@ export function QAList({ value, onChange, addLabel, questionPlaceholder }: { val
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="grid">
       {value.map((pair, i) => (
-        <div key={keys[i] ?? `extra-${i}`} className="grid gap-3 rounded-2xl border bg-muted/30 p-3 sm:p-4">
-          <div className="flex items-start gap-2">
-            <span className="mt-2.5 w-5 shrink-0 text-right font-mono text-xs text-muted-foreground">{i + 1}</span>
-            <Textarea
+        <div key={keys[i] ?? `extra-${i}`} className="group grid gap-1 border-b py-3">
+          <div className="flex items-start gap-3">
+            <span className="mt-1 w-4 shrink-0 text-right text-sm text-muted-foreground tabular-nums">{i + 1}</span>
+            <textarea
               value={pair.q}
               placeholder={questionPlaceholder}
               onChange={(e) => onChange(value.map((v, j) => (j === i ? { ...v, q: e.target.value } : v)))}
-              className="min-h-10 bg-card font-medium"
+              aria-label={`Question ${i + 1}`}
               rows={1}
+              className="field-sizing-content min-w-0 flex-1 resize-none bg-transparent py-0.5 font-semibold outline-none placeholder:font-normal placeholder:text-muted-foreground/60"
             />
-            <Button type="button" variant="ghost" size="icon" aria-label="Remove question" onClick={() => remove(i)}>
-              <X />
-            </Button>
+            <RemoveButton label="Remove question" onClick={() => remove(i)} />
           </div>
           <div className="pl-7">
             <RichEditor
               compact
+              bare
               value={pair.a}
               onChange={(a) => onChange(value.map((v, j) => (j === i ? { ...v, a } : v)))}
               placeholder="The answer…"
@@ -135,9 +153,7 @@ export function QAList({ value, onChange, addLabel, questionPlaceholder }: { val
           </div>
         </div>
       ))}
-      <Button type="button" variant="outline" size="sm" className="w-fit" onClick={add}>
-        <Plus /> {addLabel}
-      </Button>
+      <AddButton onClick={add}>{addLabel}</AddButton>
     </div>
   )
 }
@@ -148,18 +164,24 @@ export function CppInput({
   onChange,
   placeholder,
   minHeight = "8rem",
+  bare = false,
   "aria-label": label,
 }: {
   value: string
   onChange: (code: string) => void
   placeholder?: string
   minHeight?: string
+  /** No box around it (the practice screen). */
+  bare?: boolean
   "aria-label"?: string
 }) {
   return (
     <div
       style={{ "--min-h": minHeight } as CSSProperties}
-      className="code-block min-h-(--min-h) overflow-hidden rounded-lg border border-input bg-card transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50"
+      className={cn(
+        "code-block min-h-(--min-h)",
+        !bare && "overflow-hidden rounded-lg border border-input bg-card transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50",
+      )}
     >
       <CppEditor value={value} onChange={onChange} placeholder={placeholder} label={label} />
     </div>

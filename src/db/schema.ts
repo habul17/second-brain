@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm"
 import {
+  type AnyPgColumn,
   boolean,
   customType,
   index,
@@ -130,11 +131,17 @@ export const topics = pgTable(
     sectionId: uuid("section_id")
       .notNull()
       .references(() => sections.id, { onDelete: "cascade" }),
+    /** A subtopic's topic (Dev › React › Hooks). Only one level deep: a subtopic has no subtopics. */
+    parentId: uuid("parent_id").references((): AnyPgColumn => topics.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     position: integer("position").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("topics_section_idx").on(t.sectionId, t.position), index("topics_user_idx").on(t.userId)],
+  (t) => [
+    index("topics_section_idx").on(t.sectionId, t.position),
+    index("topics_user_idx").on(t.userId),
+    index("topics_parent_idx").on(t.parentId),
+  ],
 )
 
 export const notes = pgTable(

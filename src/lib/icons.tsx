@@ -15,7 +15,7 @@ export const KIND_LABEL: Record<NoteKind, string> = {
 }
 
 const SECTION_ICONS: [RegExp, LucideIcon][] = [
-  [/\b(web|frontend|front-end|react|next)\b/i, Globe],
+  [/\b(dev|web|frontend|front-end|react|next)\b/i, Globe],
   [/\b(dsa|algo|algorithms?|leetcode|data structures?)\b/i, Binary],
   [/\b(ai|ml|llm|machine learning)\b/i, Sparkles],
   [/\b(backend|back-end|server|api)\b/i, Server],

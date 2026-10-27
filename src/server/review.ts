@@ -4,6 +4,7 @@ import { db } from "@/db"
 import { cards, notePatterns, notes, reviews, sections, topics, type QA, type ReviewMode } from "@/db/schema"
 import { previewDays, schedule, type ReviewRating } from "@/server/fsrs"
 import { getSettings } from "@/server/settings"
+import { topicPath } from "@/server/topic-path"
 
 /** Rough minutes one review takes, to fit the daily budget. */
 function minutesFor(kind: string, timeLimitMin: number | null) {
@@ -61,7 +62,7 @@ export async function buildSession(userId: string, { noteIds }: { noteIds?: stri
   const settings = await getSettings(userId)
   const now = new Date()
   const rows = await db
-    .select({ note: notes, card: cards, topicName: topics.name, sectionId: sections.id, sectionName: sections.name })
+    .select({ note: notes, card: cards, topicName: topicPath, sectionId: sections.id, sectionName: sections.name })
     .from(cards)
     .innerJoin(notes, eq(notes.id, cards.noteId))
     .innerJoin(topics, eq(topics.id, notes.topicId))

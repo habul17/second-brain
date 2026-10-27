@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { AnimatePresence, motion } from "motion/react"
-import { Home, PartyPopper, RotateCcw, X } from "lucide-react"
+import { motion } from "motion/react"
+import { X } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "cn"
 import { submitReviewAction } from "@/actions/review"
@@ -40,13 +40,11 @@ function useElapsed(running: boolean) {
 export function ReviewSession({
   session: initial,
   mode,
-  title,
   round = 1,
   timed = false,
 }: {
   session: Session
   mode: ReviewMode
-  title: string
   round?: number
   /** Show a running clock (mock interviews). */
   timed?: boolean
@@ -60,6 +58,7 @@ export function ReviewSession({
   const item = session.items[index]
   const done = index >= total
   const clock = useElapsed(timed && !done)
+  const [slot, setSlot] = useState<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (done && total > 0) celebrate()
@@ -76,91 +75,75 @@ export function ReviewSession({
   }
 
   if (done) {
+    const tally = ([3, 2, 1] as const).filter((r) => counts[r] > 0).map((r) => `${counts[r]} ${LABEL[r].toLowerCase()}`)
     return (
-      <div className="mx-auto grid w-full max-w-2xl gap-6">
-        <div className="grid justify-items-center gap-6 rounded-3xl border-2 border-foreground bg-card px-7 py-14 text-center">
-          <div className="grid size-14 place-items-center rounded-full bg-foreground text-background">
-            <PartyPopper className="size-7" />
-          </div>
-          <div className="grid gap-2">
-            <div className="text-2xl font-semibold">
-              {mode === "mock" ? `Mock interview done in ${clock}` : mode === "practice" ? "Practice done" : "Done for today"}
-            </div>
-            <div className="flex flex-wrap justify-center gap-2 text-sm text-muted-foreground tabular-nums">
-              {([3, 2, 1] as const).map((r) => (
-                <span key={r} className="rounded-lg border px-2.5 py-1">
-                  {LABEL[r]}: {counts[r]}
-                </span>
-              ))}
-            </div>
-            {counts[1] > 0 && <p className="text-sm text-muted-foreground">The ones you forgot come back tomorrow.</p>}
-          </div>
-          <div className="mt-2 flex flex-wrap justify-center gap-3">
-            {mode === "mock" && (
-              <Button asChild variant="outline" size="lg">
-                <Link href={`/mock?go=${session.items.some((i) => i.kind === "problem") ? "full" : "quick"}&round=${round + 1}`}>
-                  <RotateCcw /> Another mock
-                </Link>
-              </Button>
-            )}
-            {mode === "daily" && session.remaining > 0 && (
-              <Button asChild variant="outline" size="lg">
-                <Link href={`/review?round=${round + 1}`}>
-                  <RotateCcw /> One more round ({session.remaining} due)
-                </Link>
-              </Button>
-            )}
-            <Button asChild size="lg" className="h-11 px-5 text-base">
-              <Link href="/">
-                <Home /> Back home
-              </Link>
+      <div className="mx-auto grid w-full max-w-[520px] justify-items-center gap-3 pt-10 text-center sm:pt-16">
+        <h1 className="text-[1.75rem] font-bold tracking-tight">
+          {mode === "mock" ? `Mock interview done in ${clock}` : mode === "practice" ? "Practice done" : "Done for today"}
+        </h1>
+        <p className="text-muted-foreground tabular-nums">
+          {tally.join(" · ")}
+          {counts[1] > 0 && mode !== "practice" && ". The ones you forgot come back tomorrow."}
+        </p>
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          {mode === "mock" && (
+            <Button asChild variant="outline" size="lg" className="h-12 rounded-xl px-5 text-base">
+              <Link href={`/mock?go=${session.items.some((i) => i.kind === "problem") ? "full" : "quick"}&round=${round + 1}`}>Another mock</Link>
             </Button>
-          </div>
+          )}
+          {mode === "daily" && session.remaining > 0 && (
+            <Button asChild variant="outline" size="lg" className="h-12 rounded-xl px-5 text-base">
+              <Link href={`/review?round=${round + 1}`}>One more round ({session.remaining} due)</Link>
+            </Button>
+          )}
+          <Button asChild size="lg" className="h-12 rounded-xl px-5 text-base">
+            <Link href="/">Back home</Link>
+          </Button>
         </div>
       </div>
     )
   }
 
+  const problem = item.kind === "problem"
   return (
-    // data-focus hides the top bar (globals.css). Problems go wide on laptop: problem on the left, your work on the right.
-    <div data-focus className={cn("mx-auto grid w-full max-w-2xl grid-cols-1 gap-8", item.kind === "problem" && "lg:max-w-none")}>
-      <div className="grid grid-cols-1 gap-3">
-        <div className="flex items-center justify-between gap-3">
-          <span className="min-w-0 truncate text-sm text-muted-foreground">
-            {title} · {item.kind === "problem" ? item.sectionName : `${item.sectionName} › ${item.topicName}`}
+    // data-focus hides the top bar; data-full lets the page use the whole width.
+    <div data-focus data-full className="grid min-h-svh grid-rows-[auto_1fr]">
+      <div className={cn("mx-auto flex w-full items-center gap-3.5 px-4 pt-5 sm:px-7", problem ? "max-w-[1120px]" : "max-w-[660px]")}>
+        <div className="flex min-w-0 flex-1 items-center gap-3.5">
+          {!problem && (
+            <div className="h-1 flex-1 overflow-hidden rounded-full bg-accent">
+              <motion.div className="h-full bg-foreground" initial={false} animate={{ width: `${(index / total) * 100}%` }} transition={{ type: "spring", stiffness: 120, damping: 20 }} />
+            </div>
+          )}
+          {/* A problem puts its own step bar and clock here. */}
+          <div ref={setSlot} className="contents" />
+        </div>
+        {total > 1 && (
+          <span className="text-[0.9rem] whitespace-nowrap text-muted-foreground tabular-nums">
+            {index + 1} of {total}
           </span>
-          <div className="flex shrink-0 items-center gap-2">
-            {timed && <span className="rounded-md border px-2 py-0.5 font-mono text-sm tabular-nums">{clock}</span>}
-            <span className="font-mono text-sm tabular-nums">
-              {index + 1} / {total}
-            </span>
-            <Button asChild variant="ghost" size="icon" aria-label="Stop for now">
-              <Link href="/">
-                <X />
-              </Link>
-            </Button>
-          </div>
-        </div>
-        <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-          <motion.div className="h-full bg-foreground" initial={false} animate={{ width: `${(index / total) * 100}%` }} transition={{ type: "spring", stiffness: 120, damping: 20 }} />
-        </div>
+        )}
+        {timed && !problem && <span className="font-mono text-sm text-muted-foreground tabular-nums">{clock}</span>}
+        <Button asChild variant="ghost" size="icon" aria-label="Stop for now" title="Stop for now. Every answer so far is saved.">
+          <Link href="/">
+            <X />
+          </Link>
+        </Button>
       </div>
 
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.div key={item.noteId} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.22 }}>
-          {item.kind === "problem" ? (
-            <ProblemReview item={item} allPatterns={session.allPatterns} onDone={onDone} />
-          ) : (
-            <ConceptReview item={item} onDone={onDone} />
-          )}
-        </motion.div>
-      </AnimatePresence>
-
-      {index === 0 && (
-        <p className="text-center text-xs text-muted-foreground">
-          Need a break? Tap X. Every answer so far is saved.
-        </p>
-      )}
+      <motion.div
+        key={item.noteId}
+        initial={{ opacity: 0, x: 24 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.22 }}
+        className="grid grid-rows-[1fr_auto]"
+      >
+        {problem ? (
+          <ProblemReview item={item} allPatterns={session.allPatterns} slot={slot} onDone={onDone} />
+        ) : (
+          <ConceptReview item={item} onDone={onDone} />
+        )}
+      </motion.div>
     </div>
   )
 }

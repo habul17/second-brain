@@ -38,10 +38,11 @@ export async function reorderSectionsAction(ids: string[]) {
   revalidatePath("/")
 }
 
-export async function createTopicAction(sectionId: string, raw: string) {
+/** A topic, or with `parentId` a subtopic of it. */
+export async function createTopicAction(sectionId: string, raw: string, parentId: string | null = null) {
   const user = await requireUser()
-  const topic = await createTopic(user.id, id.parse(sectionId), name.parse(raw))
-  revalidatePath(`/s/${sectionId}`)
+  const topic = await createTopic(user.id, id.parse(sectionId), name.parse(raw), parentId && id.parse(parentId))
+  revalidatePath("/", "layout")
   return topic.id
 }
 

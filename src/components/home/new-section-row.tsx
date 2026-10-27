@@ -5,7 +5,7 @@ import { Plus } from "lucide-react"
 import { createSectionAction } from "@/actions/library"
 import { NameDialog } from "@/components/name-dialog"
 
-export function NewSectionCard() {
+export function NewSectionRow() {
   const router = useRouter()
   return (
     <NameDialog
@@ -20,11 +20,12 @@ export function NewSectionCard() {
       trigger={
         <button
           type="button"
-          className="grid min-h-14 place-items-center gap-2 rounded-3xl border border-dashed p-4 text-muted-foreground sm:min-h-40 sm:p-6 transition-colors hover:border-foreground/50 hover:bg-muted/50 hover:text-foreground"
+          className="flex min-h-13 w-full items-center gap-3.5 px-4 py-3 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
-          <span className="flex items-center gap-2 font-medium">
-            <Plus className="size-4" /> New section
+          <span className="grid size-[34px] shrink-0 place-items-center">
+            <Plus className="size-[18px]" />
           </span>
+          New section
         </button>
       }
     />

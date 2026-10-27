@@ -12,7 +12,10 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <div className="min-h-svh">
       <TopBar user={{ name: user.name, email: user.email, image: user.image ?? null }} due={plan.count} />
-      <main className="mx-auto w-full max-w-5xl px-4 pt-8 pb-24 sm:px-6 sm:pt-12">{children}</main>
+      {/* Pages marked data-full (the note page with its sidebar) use the whole width. */}
+      <main className="mx-auto w-full max-w-5xl px-4 pt-8 pb-24 sm:px-6 sm:pt-12 has-[[data-full]]:max-w-none has-[[data-full]]:p-0">
+        {children}
+      </main>
       <TimezoneSync saved={settings.timezone} />
       <RegisterServiceWorker />
     </div>

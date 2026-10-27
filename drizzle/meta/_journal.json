@@ -15,6 +15,13 @@
       "when": 1793001600697,
       "tag": "0001_smiling_doomsday",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793043214027,
+      "tag": "0002_smart_bloodstrike",
+      "breakpoints": true
     }
   ]
 }
