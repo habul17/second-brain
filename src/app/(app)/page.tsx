@@ -4,7 +4,7 @@ import { cn } from "cn"
 import { MockSheet, WeakSheet } from "@/components/home/practice-sheets"
 import { NewSectionRow } from "@/components/home/new-section-row"
 import { Button } from "@/components/ui/button"
-import { SectionIcon } from "@/lib/icons"
+import { SectionIcon, sectionIcons } from "@/lib/icons"
 import { todayPlan } from "@/server/review"
 import { listSectionsWithCounts } from "@/server/sections"
 import { requireUser } from "@/server/session"
@@ -44,6 +44,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
     searchParams,
   ])
   const totalNotes = sections.reduce((sum, s) => sum + s.noteCount, 0)
+  const icons = sectionIcons(sections)
   // The last four weeks, two rows of fourteen days. Hidden until there is something to show.
   const recent = stats.cells.slice(-28)
   const reviewedRecently = recent.some((c) => c.n > 0)
@@ -116,7 +117,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
             <li key={s.id} className="border-b last:border-b-0">
               <Link href={`/s/${s.id}`} className="flex min-h-15 items-center gap-3.5 px-4 py-3.5 transition-colors hover:bg-accent">
                 <span className="grid size-[34px] shrink-0 place-items-center rounded-[10px] bg-foreground text-background">
-                  <SectionIcon name={s.name} className="size-[18px]" />
+                  <SectionIcon icon={icons[s.id]} className="size-[18px]" />
                 </span>
                 <span className="grid min-w-0 flex-1 gap-0.5">
                   <span className="truncate text-[1.02rem] font-bold">{s.name}</span>

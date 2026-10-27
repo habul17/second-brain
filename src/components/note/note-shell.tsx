@@ -7,7 +7,7 @@ import { TopicTree } from "@/components/tree/topic-tree"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
-import { SectionIcon } from "@/lib/icons"
+import { SectionIcon, type SectionIconName } from "@/lib/icons"
 import type { TreeTopic } from "@/server/topics"
 
 // Whether the laptop sidebar is hidden, kept in this browser.
@@ -41,7 +41,7 @@ function setHidden(hidden: boolean) {
 const Shell = createContext({ hidden: false, openDrawer: () => {} })
 
 interface Props {
-  sections: { id: string; name: string }[]
+  sections: { id: string; name: string; icon: SectionIconName }[]
   /** Every section's topics, so the switcher can change section without leaving the note. */
   topics: TreeTopic[]
   sectionId: string
@@ -117,7 +117,7 @@ function SidebarBody({
               className="flex h-[38px] min-w-0 flex-1 items-center gap-[9px] rounded-[10px] border pr-2.5 pl-[7px] text-left font-bold transition-colors hover:bg-accent"
             >
               <span className="grid size-6 shrink-0 place-items-center rounded-[7px] bg-foreground text-background">
-                <SectionIcon name={section?.name ?? ""} className="size-[13px]" />
+                <SectionIcon icon={section?.icon} className="size-[13px]" />
               </span>
               <span className="min-w-0 flex-1 truncate">{section?.name}</span>
               <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />
@@ -126,7 +126,7 @@ function SidebarBody({
           <DropdownMenuContent align="start" className="w-(--radix-dropdown-menu-trigger-width)">
             {sections.map((s) => (
               <DropdownMenuItem key={s.id} onSelect={() => setShown(s.id)} className={cn(s.id === shown && "font-bold")}>
-                <SectionIcon name={s.name} /> {s.name}
+                <SectionIcon icon={s.icon} /> {s.name}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>

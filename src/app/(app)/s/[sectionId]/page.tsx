@@ -4,7 +4,7 @@ import { ChevronLeft } from "lucide-react"
 import { z } from "zod"
 import { NewTopicButton, SectionMenu } from "@/components/section-actions"
 import { TopicTree } from "@/components/tree/topic-tree"
-import { SectionIcon } from "@/lib/icons"
+import { SectionIcon, sectionIcons } from "@/lib/icons"
 import { getSection, listSections } from "@/server/sections"
 import { requireUser } from "@/server/session"
 import { sectionTree } from "@/server/topics"
@@ -37,7 +37,7 @@ export default async function SectionPage({ params }: PageProps<"/s/[sectionId]"
       </Link>
       <div className="flex items-center gap-3.5">
         <span className="grid size-[46px] shrink-0 place-items-center rounded-[13px] bg-foreground text-background">
-          <SectionIcon name={section.name} className="size-5" />
+          <SectionIcon icon={sectionIcons(all)[section.id]} className="size-5" />
         </span>
         <div className="grid min-w-0 flex-1 gap-0.5">
           <h1 className="truncate text-[1.75rem] leading-tight font-bold tracking-tight">{section.name}</h1>

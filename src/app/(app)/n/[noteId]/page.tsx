@@ -6,6 +6,7 @@ import { z } from "zod"
 import { NoteMenu } from "@/components/note/note-menu"
 import { NoteShell, SidebarToggle } from "@/components/note/note-shell"
 import { NoteView } from "@/components/note/note-view"
+import { sectionIcons } from "@/lib/icons"
 import { getNote } from "@/server/notes"
 import { listSections } from "@/server/sections"
 import { requireUser } from "@/server/session"
@@ -40,6 +41,7 @@ export default async function NotePage({ params }: PageProps<"/n/[noteId]">) {
   const { user, full } = await load((await params).noteId)
   const [sections, tree] = await Promise.all([listSections(user.id), sectionTree(user.id)])
   const { note, section, topic, patterns, problems, backlinks } = full
+  const icons = sectionIcons(sections)
   // Section › Topic › Subtopic. A phone drops the section: the ☰ drawer shows it.
   const crumbs = [
     { name: section.name, phone: false },
@@ -48,7 +50,7 @@ export default async function NotePage({ params }: PageProps<"/n/[noteId]">) {
   ]
 
   return (
-    <NoteShell sections={sections.map((s) => ({ id: s.id, name: s.name }))} topics={tree} sectionId={section.id} noteId={note.id}>
+    <NoteShell sections={sections.map((s) => ({ id: s.id, name: s.name, icon: icons[s.id] }))} topics={tree} sectionId={section.id} noteId={note.id}>
       <div className="mx-auto grid w-full max-w-[760px] grid-cols-[minmax(0,1fr)] content-start gap-[18px] px-4 pt-5 sm:px-8 sm:pt-[22px]">
         <div className="flex items-center gap-2">
           <SidebarToggle />

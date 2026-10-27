@@ -22,6 +22,7 @@ export async function listSectionsWithCounts(userId: string) {
       id: sections.id,
       name: sections.name,
       position: sections.position,
+      createdAt: sections.createdAt,
       topicCount: sql<number>`count(distinct ${topics.id})::int`,
       noteCount: sql<number>`count(distinct ${notes.id})::int`,
       dueCount: sql<number>`count(distinct ${cards.noteId}) filter (where ${cards.due} <= ${now})::int`,
